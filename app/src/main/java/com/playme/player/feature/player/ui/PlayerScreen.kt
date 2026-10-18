@@ -114,7 +114,12 @@ fun PlayerScreen(
         GestureOverlayHUD(
             activeGesture = state.activeGesture,
             gestureValue = state.gestureValue,
-            isSpeedBoostActive = state.isSpeedBoostActive
+            isSpeedBoostActive = state.isSpeedBoostActive,
+            currentPosMs = state.currentPositionMs,
+            durationMs = state.durationMs,
+            onSelectBoostSpeed = { speed -> viewModel.onAction(PlayerAction.SetSpeedBoostValue(speed)) },
+            showLockedAlert = state.isLocked && state.activeGesture != GestureType.NONE,
+            boostSpeed = state.boostSpeed
         )
 
         // 4. Top HUD Bar
@@ -219,7 +224,7 @@ fun PlayerScreen(
         )
 
         // 9. Side/Bottom Settings Drawer (Delays, Decoder, Aspect Ratio, Audio FX)
-        PlayerSettingsSheet(
+        PlayerSettingsSidebar(
             isOpen = state.isSettingsOpen,
             onClose = { viewModel.onAction(PlayerAction.SetSettingsOpen(false)) },
             audioDelayMs = state.audioDelayMs,
@@ -233,24 +238,37 @@ fun PlayerScreen(
             playbackSpeed = state.playbackSpeed,
             selectedAudio = state.selectedAudioTrack,
             selectedSubtitle = state.selectedSubtitleTrack,
+            subtitleSize = state.subtitleSize,
+            volumeBoost = state.volumeBoostPercent,
+            brightnessPercent = state.brightnessPercent,
+            initialTab = when (state.activeSettingsTab) {
+                com.playme.player.feature.player.model.SettingsTab.SUBTITLES -> "subtitles"
+                com.playme.player.feature.player.model.SettingsTab.AUDIO -> "audio"
+                else -> "root"
+            },
             onAdjustAudioDelay = { delta -> viewModel.onAction(PlayerAction.AdjustAudioDelay(delta)) },
             onAdjustSubtitleDelay = { delta -> viewModel.onAction(PlayerAction.AdjustSubtitleDelay(delta)) },
             onResetDelays = { viewModel.onAction(PlayerAction.ResetDelays) },
-            onToggleDecoderMode = { viewModel.onAction(PlayerAction.ToggleDecoderMode) },
-            onCycleAspectRatio = { viewModel.onAction(PlayerAction.CycleAspectRatio) },
+            onSelectDecoderMode = { mode -> viewModel.onAction(PlayerAction.SetDecoderMode(mode)) },
+            onSelectAspectRatio = { mode -> viewModel.onAction(PlayerAction.SetAspectRatio(mode)) },
             onToggleDialogueClarity = { viewModel.onAction(PlayerAction.ToggleDialogueClarity) },
+            onVolumeBoostChange = { boost -> viewModel.onAction(PlayerAction.SetVolumeBoost(boost)) },
             onToggleAmbientGlow = { viewModel.onAction(PlayerAction.ToggleAmbientGlow) },
+            onBrightnessChange = { b -> viewModel.onAction(PlayerAction.SetBrightness(b)) },
             onToggleBackgroundPlay = { viewModel.onAction(PlayerAction.ToggleBackgroundPlay) },
-            onOpenSpeedPicker = { viewModel.onAction(PlayerAction.SetSpeedPickerOpen(true)) },
-            onCycleSleepTimer = { viewModel.onAction(PlayerAction.SetSleepTimer(-1)) }
+            onSelectSpeed = { speed -> viewModel.onAction(PlayerAction.SetSpeed(speed)) },
+            onSelectSleepTimer = { minutes -> viewModel.onAction(PlayerAction.SetSleepTimer(minutes)) },
+            onSelectAudioTrack = { track -> viewModel.onAction(PlayerAction.SelectAudioTrack(track)) },
+            onSelectSubtitleTrack = { track -> viewModel.onAction(PlayerAction.SelectSubtitleTrack(track)) },
+            onSelectSubtitleSize = { size -> viewModel.onAction(PlayerAction.SetSubtitleSize(size)) }
         )
 
-        // 10. Playback Speed Selector Modal
-        PlaybackSpeedSheet(
+        // 10. Playback Speed Selector Studio Dock
+        PlaybackSpeedStudioDock(
             isOpen = state.isSpeedPickerOpen,
             onClose = { viewModel.onAction(PlayerAction.SetSpeedPickerOpen(false)) },
-            currentSpeed = state.playbackSpeed,
-            onSpeedSelected = { speed -> viewModel.onAction(PlayerAction.SetSpeed(speed)) }
+            speed = state.playbackSpeed,
+            onSpeedChange = { speed -> viewModel.onAction(PlayerAction.SetSpeed(speed)) }
         )
     }
 }

@@ -51,4 +51,7 @@ sealed interface PlayerAction {
     data class SelectAudioTrack(val track: String) : PlayerAction
     data class SelectSubtitleTrack(val track: String) : PlayerAction
     data class SetSubtitleSize(val size: String) : PlayerAction
+    data class SetAspectRatio(val mode: AspectRatioMode) : PlayerAction
+    data class SetDecoderMode(val mode: DecoderMode) : PlayerAction
+    data class SetSpeedBoostValue(val speed: Float) : PlayerAction
 }

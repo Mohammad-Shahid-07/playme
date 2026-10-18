@@ -129,6 +129,21 @@ class PlayerViewModel : ViewModel() {
             is PlayerAction.SelectAudioTrack -> _state.update { it.copy(selectedAudioTrack = action.track) }
             is PlayerAction.SelectSubtitleTrack -> _state.update { it.copy(selectedSubtitleTrack = action.track) }
             is PlayerAction.SetSubtitleSize -> _state.update { it.copy(subtitleSize = action.size) }
+            is PlayerAction.SetAspectRatio -> {
+                _state.update { it.copy(aspectRatioMode = action.mode) }
+                showToast(action.mode.label)
+            }
+            is PlayerAction.SetDecoderMode -> {
+                _state.update { it.copy(decoderMode = action.mode) }
+                engine?.setDecoderMode(action.mode)
+                showToast("Decoder: ${action.mode.name}")
+            }
+            is PlayerAction.SetSpeedBoostValue -> {
+                _state.update { it.copy(boostSpeed = action.speed) }
+                if (_state.value.isSpeedBoostActive) {
+                    engine?.setSpeed(action.speed)
+                }
+            }
         }
     }
 
@@ -247,7 +262,7 @@ class PlayerViewModel : ViewModel() {
 
     private fun setSpeedBoost(enabled: Boolean) {
         _state.update { it.copy(isSpeedBoostActive = enabled) }
-        engine?.setSpeed(if (enabled) 2.0f else _state.value.playbackSpeed)
+        engine?.setSpeed(if (enabled) _state.value.boostSpeed else _state.value.playbackSpeed)
     }
 
     private fun adjustAudioDelay(deltaMs: Long) {

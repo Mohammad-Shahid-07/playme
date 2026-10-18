@@ -8,7 +8,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.BrightnessMedium
-import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,8 +29,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.playme.player.feature.player.model.GestureType
@@ -42,49 +38,32 @@ fun GestureOverlayHUD(
     activeGesture: GestureType,
     gestureValue: Float,
     isSpeedBoostActive: Boolean,
+    currentPosMs: Long,
+    durationMs: Long,
+    onSelectBoostSpeed: (Float) -> Unit,
+    showLockedAlert: Boolean = false,
+    boostSpeed: Float = 2.0f,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        // 1. 2x Speed Boost Pill (Center Top)
-        AnimatedVisibility(
-            visible = isSpeedBoostActive,
-            enter = fadeIn(),
-            exit = fadeOut(),
+        // 1. Locked Alert Toast
+        GestureLockedToast(
+            visible = showLockedAlert,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .shadow(16.dp, CircleShape, spotColor = Color(0xFF6366F1))
-                    .clip(CircleShape)
-                    .background(Color(0xE60E111D))
-                    .border(1.dp, Color(0x4D6366F1), CircleShape)
-                    .padding(horizontal = 14.dp, vertical = 6.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.FastForward,
-                        contentDescription = null,
-                        tint = Color(0xFF818CF8),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Text(
-                        text = "2X FASTPLAY",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.5.sp
-                    )
-                }
-            }
-        }
+        )
 
-        // 2. Brightness Pill (Left Edge)
+        // 2. Quick Speed Boost Card (Center Top)
+        QuickSpeedBoostHUD(
+            isActive = isSpeedBoostActive,
+            boostSpeed = boostSpeed,
+            onSelectBoostSpeed = onSelectBoostSpeed,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp)
+        )
+
+        // 3. Brightness Pill (Left Edge)
         AnimatedVisibility(
             visible = activeGesture == GestureType.BRIGHTNESS,
             enter = fadeIn(),
@@ -98,7 +77,7 @@ fun GestureOverlayHUD(
             )
         }
 
-        // 3. Volume Pill (Right Edge)
+        // 4. Volume Pill (Right Edge)
         AnimatedVisibility(
             visible = activeGesture == GestureType.VOLUME,
             enter = fadeIn(),
@@ -112,43 +91,14 @@ fun GestureOverlayHUD(
             )
         }
 
-        // 4. Scrub Seek Badge (Center)
-        AnimatedVisibility(
-            visible = activeGesture == GestureType.SEEK,
-            enter = fadeIn(),
-            exit = fadeOut(),
+        // 5. Screen Gesture Seek Floating Pill (Center)
+        ScreenGestureSeekHUD(
+            isActive = activeGesture == GestureType.SEEK,
+            deltaMs = gestureValue.toLong(),
+            currentPosMs = currentPosMs,
+            durationMs = durationMs,
             modifier = Modifier.align(Alignment.Center)
-        ) {
-            Box(
-                modifier = Modifier
-                    .shadow(20.dp, RoundedCornerShape(14.dp), spotColor = Color(0x99000000))
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(Color(0xF00E111D))
-                    .border(1.dp, Color(0x26FFFFFF), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 18.dp, vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    val sign = if (gestureValue >= 0) "+" else ""
-                    Text(
-                        text = "$sign${gestureValue.toInt()}s",
-                        color = Color(0xFF818CF8),
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = "Swipe to Seek",
-                        color = Color(0x99FFFFFF),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
+        )
     }
 }
 
@@ -202,9 +152,7 @@ private fun VerticalGestureCapsule(
             Text(
                 text = label,
                 color = Color.White,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
+                fontSize = 10.sp
             )
         }
     }

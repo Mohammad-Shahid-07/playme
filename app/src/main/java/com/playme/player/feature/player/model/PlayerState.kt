@@ -46,6 +46,7 @@ data class PlayerState(
     val gestureValue: Float = 0f,
     val seekPreviewPositionMs: Long = 0L,
     val isSpeedBoostActive: Boolean = false,
+    val boostSpeed: Float = 2.0f,
     val toastMessage: String? = null,
     val isQueueOpen: Boolean = false,
     val isSettingsOpen: Boolean = false,

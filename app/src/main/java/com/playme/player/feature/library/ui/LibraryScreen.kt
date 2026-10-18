@@ -29,7 +29,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -58,22 +57,9 @@ fun LibraryScreen(
     val pagerState = rememberPagerState(initialPage = 0) { 2 }
     val coroutineScope = rememberCoroutineScope()
 
-    // Sync pager swipe with ViewModel active sub-tab
-    LaunchedEffect(pagerState.currentPage) {
-        val tab = if (pagerState.currentPage == 0) VideoSubTab.VIDEOS else VideoSubTab.FOLDERS
-        if (state.activeSubTab != tab) {
-            viewModel.onAction(LibraryAction.SetSubTab(tab))
-        }
-    }
+    // Direct single source of truth from pagerState - NO fighting loops!
+    val currentSubTab = if (pagerState.currentPage == 0) VideoSubTab.VIDEOS else VideoSubTab.FOLDERS
 
-    LaunchedEffect(state.activeSubTab) {
-        val targetPage = if (state.activeSubTab == VideoSubTab.VIDEOS) 0 else 1
-        if (pagerState.currentPage != targetPage) {
-            pagerState.animateScrollToPage(targetPage)
-        }
-    }
-
-    // Outer Viewport with statusBarsPadding() matching DeviceFrame status bar in prototype
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -119,7 +105,7 @@ fun LibraryScreen(
             }
         }
 
-        // 4. Continue Watching Carousel (Persistent across Videos & Folders)
+        // 4. Continue Watching Carousel (Persistent across both tabs)
         if (state.searchQuery.isEmpty() && state.selectedFolder == null) {
             ContinueWatchingRow(
                 items = state.continueWatching,
@@ -132,19 +118,20 @@ fun LibraryScreen(
 
         // 5. Video Sub-Nav Bar (Videos / Folders, Sort, View mode)
         VideoSubNavBar(
-            activeTab = state.activeSubTab,
+            activeTab = currentSubTab,
             sortOption = state.sortOption,
             viewMode = state.viewMode,
             onTabChange = { tab ->
-                val targetPage = if (tab == VideoSubTab.VIDEOS) 0 else 1
-                coroutineScope.launch { pagerState.animateScrollToPage(targetPage) }
-                viewModel.onAction(LibraryAction.SetSubTab(tab))
+                val target = if (tab == VideoSubTab.VIDEOS) 0 else 1
+                coroutineScope.launch {
+                    pagerState.animateScrollToPage(target)
+                }
             },
             onSortChange = { viewModel.onAction(LibraryAction.SetSortOption(it)) },
             onViewModeToggle = { viewModel.onAction(LibraryAction.ToggleViewMode) }
         )
 
-        // 6. Smooth Swipable Animated Pager for Videos & Folders
+        // 6. Smooth Swipable Animated Pager with Zero Recomposition Jitter
         if (state.isLoading) {
             Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Color(0xFF818CF8), strokeWidth = 2.5.dp)
@@ -153,24 +140,25 @@ fun LibraryScreen(
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                userScrollEnabled = state.selectedFolder == null
+                userScrollEnabled = state.selectedFolder == null,
+                key = { it }
             ) { page ->
                 if (page == 0) {
-                    // Page 0: Videos Feed with lazy keys for stutter-free scrolling
+                    // Page 0: Videos Feed
                     if (state.displayedVideos.isEmpty()) {
                         EmptyVideosView()
                     } else if (state.viewMode == ViewMode.GRID) {
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(
                                 items = state.displayedVideos,
                                 key = { it.id },
-                                contentType = { "video_card_grid" }
+                                contentType = { "video_grid" }
                             ) { video ->
                                 VideoCardItem(
                                     video = video,
@@ -182,13 +170,13 @@ fun LibraryScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(
                                 items = state.displayedVideos,
                                 key = { it.id },
-                                contentType = { "video_card_list" }
+                                contentType = { "video_list" }
                             ) { video ->
                                 VideoCardItem(
                                     video = video,
@@ -204,14 +192,14 @@ fun LibraryScreen(
                         LazyVerticalGrid(
                             columns = GridCells.Fixed(2),
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             items(
                                 items = state.folders,
                                 key = { it.id },
-                                contentType = { "folder_card_grid" }
+                                contentType = { "folder_grid" }
                             ) { folder ->
                                 FolderCardItem(
                                     folder = folder,
@@ -223,13 +211,13 @@ fun LibraryScreen(
                     } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             items(
                                 items = state.folders,
                                 key = { it.id },
-                                contentType = { "folder_card_list" }
+                                contentType = { "folder_list" }
                             ) { folder ->
                                 FolderCardItem(
                                     folder = folder,

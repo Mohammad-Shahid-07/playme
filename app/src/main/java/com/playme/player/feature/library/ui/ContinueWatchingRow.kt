@@ -1,5 +1,8 @@
 package com.playme.player.feature.library.ui
 
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,10 +11,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -19,19 +22,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.playme.player.core.model.ContinueWatchingItem
+import com.playme.player.core.scanner.ThumbnailManager
 
 @Composable
 fun ContinueWatchingRow(
@@ -117,14 +127,23 @@ private fun ContinueWatchingCard(
     item: ContinueWatchingItem,
     onClick: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val imageRequest = androidx.compose.runtime.remember(item.thumbnailUrl) {
-        coil3.request.ImageRequest.Builder(context)
-            .data(item.thumbnailUrl)
-            .size(coil3.size.Size(300, 160))
-            .memoryCacheKey(item.id)
-            .diskCacheKey(item.id)
-            .build()
+    val context = LocalContext.current
+    var bitmap by remember(item.id) {
+        mutableStateOf<Bitmap?>(ThumbnailManager.getFromMemory(item.id))
+    }
+
+    LaunchedEffect(item.id) {
+        if (bitmap == null) {
+            val uri = try { Uri.parse(item.thumbnailUrl) } catch (_: Exception) { Uri.EMPTY }
+            bitmap = ThumbnailManager.loadThumbnail(
+                context = context,
+                videoId = item.id,
+                uri = uri,
+                filePath = item.path,
+                targetWidth = 300,
+                targetHeight = 160
+            )
+        }
     }
 
     Column(
@@ -141,12 +160,20 @@ private fun ContinueWatchingCard(
                 .background(Color(0xFF11131E))
                 .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(9.dp))
         ) {
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = item.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.size(136.dp, 72.dp)
-            )
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap!!.asImageBitmap(),
+                    contentDescription = item.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF11131E))
+                )
+            }
 
             // Duration Badge: bottom 4px, right 4px, rgba(0,0,0,0.85), 9.5px font
             Box(

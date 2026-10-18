@@ -15,11 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Tune
-import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,10 +25,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.playme.player.core.designsystem.BrowseNavIcon
+import com.playme.player.core.designsystem.MusicNavIcon
+import com.playme.player.core.designsystem.SettingsNavIcon
+import com.playme.player.core.designsystem.VideoNavIcon
 
 enum class MainNavTab {
     VIDEO, MUSIC, BROWSE, SETTINGS
@@ -49,7 +48,7 @@ fun BottomNavBar(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         // Floating Capsule Dock: 60px height, rgba(10, 13, 24, 0.75), 1px solid rgba(255, 255, 255, 0.1)
@@ -74,19 +73,19 @@ fun BottomNavBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Tab 1: Video
-                NavTabButton(
-                    icon = Icons.Rounded.Videocam,
+                NavTabItem(
                     label = "Video",
                     isActive = activeTab == MainNavTab.VIDEO,
+                    icon = { VideoNavIcon(active = activeTab == MainNavTab.VIDEO, size = 21.dp) },
                     onClick = { onTabSelected(MainNavTab.VIDEO) },
                     modifier = Modifier.weight(1f)
                 )
 
                 // Tab 2: Music
-                NavTabButton(
-                    icon = Icons.Rounded.Headphones,
+                NavTabItem(
                     label = "Music",
                     isActive = activeTab == MainNavTab.MUSIC,
+                    icon = { MusicNavIcon(active = activeTab == MainNavTab.MUSIC, size = 21.dp) },
                     onClick = { onTabSelected(MainNavTab.MUSIC) },
                     modifier = Modifier.weight(1f)
                 )
@@ -99,19 +98,19 @@ fun BottomNavBar(
                 )
 
                 // Tab 3: Browse
-                NavTabButton(
-                    icon = Icons.Rounded.Folder,
+                NavTabItem(
                     label = "Browse",
                     isActive = activeTab == MainNavTab.BROWSE,
+                    icon = { BrowseNavIcon(active = activeTab == MainNavTab.BROWSE, size = 21.dp) },
                     onClick = { onTabSelected(MainNavTab.BROWSE) },
                     modifier = Modifier.weight(1f)
                 )
 
                 // Tab 4: Settings
-                NavTabButton(
-                    icon = Icons.Rounded.Tune,
+                NavTabItem(
                     label = "Settings",
                     isActive = activeTab == MainNavTab.SETTINGS,
+                    icon = { SettingsNavIcon(active = activeTab == MainNavTab.SETTINGS, size = 21.dp) },
                     onClick = { onTabSelected(MainNavTab.SETTINGS) },
                     modifier = Modifier.weight(1f)
                 )
@@ -135,10 +134,9 @@ fun BottomNavBar(
                     )
                 )
                 .clickable(onClick = onBigPlayClick)
-                .padding(3.dp), // 3px outer ring padding
+                .padding(3.dp),
             contentAlignment = Alignment.Center
         ) {
-            // Inner Dome: #0F111E
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -161,15 +159,15 @@ fun BottomNavBar(
 }
 
 @Composable
-private fun NavTabButton(
-    icon: ImageVector,
+private fun NavTabItem(
     label: String,
     isActive: Boolean,
+    icon: @Composable () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val activeColor = Color(0xFF818CF8)
-    val inactiveColor = Color(0x80FFFFFF) // rgba(255, 255, 255, 0.50)
+    val activeColor = Color(0xFF38BDF8) // Clean cyan matching Image 1 prototype
+    val inactiveColor = Color(0x80FFFFFF)
 
     Column(
         modifier = modifier
@@ -179,12 +177,7 @@ private fun NavTabButton(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = if (isActive) activeColor else inactiveColor,
-            modifier = Modifier.size(21.dp)
-        )
+        icon()
         Text(
             text = label,
             color = if (isActive) activeColor else inactiveColor,

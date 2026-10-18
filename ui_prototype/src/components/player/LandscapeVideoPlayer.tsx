@@ -1,4 +1,4 @@
-import { useState, type FC } from 'react';
+import { useState, useEffect, type FC } from 'react';
 import { type VideoItem } from '../../types/video';
 import { QueueDrawer, type QueueItem } from './QueueDrawer';
 import { PlayerSettingsSidebar, type SettingsTabType } from './PlayerSettingsSidebar';
@@ -32,11 +32,50 @@ export const LandscapeVideoPlayer: FC<LandscapeVideoPlayerProps> = ({
   const [isLocked, setIsLocked] = useState(false);
   const [speed, setSpeed] = useState(1.0);
   const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
+  const [isSpeedBoosting, setIsSpeedBoosting] = useState(false);
+  const [boostSpeed, setBoostSpeed] = useState(1.5);
   const [currentTime, setCurrentTime] = useState(3);
   const [abActive, setAbActive] = useState(false);
   const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<SettingsTabType>('audio');
+
+  const effectiveSpeed = isSpeedBoosting ? boostSpeed : speed;
+
+  // Playback timer progression based on effective speed (normal vs temporary boost)
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => {
+      setCurrentTime((prev) => {
+        if (prev >= TOTAL_DURATION) {
+          setIsPlaying(false);
+          return TOTAL_DURATION;
+        }
+        return Math.min(TOTAL_DURATION, prev + 0.25 * effectiveSpeed);
+      });
+    }, 250);
+    return () => clearInterval(interval);
+  }, [isPlaying, effectiveSpeed]);
+
+  // Desktop keyboard convenience: press and hold 'B' to temporarily boost speed
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'b' || e.key === 'B') && !e.repeat && !isSpeedBoosting) {
+        setIsSpeedBoosting(true);
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'b' || e.key === 'B') {
+        setIsSpeedBoosting(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isSpeedBoosting]);
 
   // Defaults matching the exact reference screenshot
   const title = video?.title || 'Concert in the Park';
@@ -149,6 +188,17 @@ export const LandscapeVideoPlayer: FC<LandscapeVideoPlayerProps> = ({
           duration={TOTAL_DURATION}
           onSeek={(newTime) => setCurrentTime(newTime)}
           isLocked={isLocked}
+          onLongPressStart={() => setIsSpeedBoosting(true)}
+          onLongPressEnd={() => setIsSpeedBoosting(false)}
+          onLongPressSlide={(targetSpeed) => setBoostSpeed(targetSpeed)}
+          boostSpeed={boostSpeed}
+        />
+
+        {/* Temporary Speed Booster HUD (appears when pressing & holding on screen) */}
+        <QuickSpeedBoostHUD
+          isActive={isSpeedBoosting}
+          boostSpeed={boostSpeed}
+          onSelectBoostSpeed={setBoostSpeed}
         />
 
         {/* LIVE ON-SCREEN SUBTITLES OVERLAY (Matching screenshot text exactly) */}
@@ -322,11 +372,11 @@ export const LandscapeVideoPlayer: FC<LandscapeVideoPlayerProps> = ({
             <div className="player-tools-capsule">
               <button
                 type="button"
-                className="player-speed-btn"
+                className={`player-speed-btn ${isSpeedBoosting ? 'is-boosting' : ''}`}
                 onClick={() => setIsSpeedMenuOpen(true)}
-                title="Playback Speed"
+                title="Playback Speed (click for menu, hold video or press 'B' to boost)"
               >
-                <span>{formatSpeed(speed)}</span>
+                <span>{formatSpeed(effectiveSpeed)}</span>
               </button>
 
               <button

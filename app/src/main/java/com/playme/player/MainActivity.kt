@@ -45,26 +45,49 @@ class MainActivity : ComponentActivity() {
                     color = PlayMeColors.Workbench
                 ) {
                     var currentTab by remember { mutableStateOf(MainNavTab.VIDEO) }
+                    var activeVideo by remember { mutableStateOf<com.playme.player.core.model.VideoItem?>(null) }
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    val playerViewModel: com.playme.player.feature.player.vm.PlayerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                    val playerEngine = remember {
+                        com.playme.player.core.player.PlayMePlayerEngine(context.applicationContext)
+                    }
+
+                    androidx.compose.runtime.LaunchedEffect(playerEngine) {
+                        playerViewModel.attachEngine(playerEngine)
+                    }
 
                     Box(modifier = Modifier.fillMaxSize()) {
-                        when (currentTab) {
-                            MainNavTab.VIDEO -> {
-                                LibraryScreen(
-                                    onVideoClick = { /* Will open player in next phase */ }
-                                )
+                        if (activeVideo != null) {
+                            com.playme.player.feature.player.ui.PlayerScreen(
+                                viewModel = playerViewModel,
+                                onClose = {
+                                    playerViewModel.onAction(com.playme.player.feature.player.model.PlayerAction.Pause)
+                                    activeVideo = null
+                                }
+                            )
+                        } else {
+                            when (currentTab) {
+                                MainNavTab.VIDEO -> {
+                                    LibraryScreen(
+                                        onVideoClick = { video ->
+                                            activeVideo = video
+                                            playerViewModel.setInitialVideo(video)
+                                        }
+                                    )
+                                }
+                                else -> {
+                                    MainTabPlaceholderView(tab = currentTab)
+                                }
                             }
-                            else -> {
-                                MainTabPlaceholderView(tab = currentTab)
-                            }
-                        }
 
-                        // Floating Glass Bottom Navigation Dock
-                        BottomNavBar(
-                            activeTab = currentTab,
-                            onTabSelected = { currentTab = it },
-                            onBigPlayClick = { /* Quick play latest video */ },
-                            modifier = Modifier.align(Alignment.BottomCenter)
-                        )
+                            // Floating Glass Bottom Navigation Dock
+                            BottomNavBar(
+                                activeTab = currentTab,
+                                onTabSelected = { currentTab = it },
+                                onBigPlayClick = { /* Quick play */ },
+                                modifier = Modifier.align(Alignment.BottomCenter)
+                            )
+                        }
                     }
                 }
             }

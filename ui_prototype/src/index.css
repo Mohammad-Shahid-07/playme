@@ -14,6 +14,12 @@
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-border-hover: rgba(255, 255, 255, 0.16);
 
+  /* Video Player Liquid Glass Overlay Standard (Mandatory for all in-player components) */
+  --player-glass-bg: rgba(10, 13, 24, 0.65);
+  --player-glass-blur: blur(28px) saturate(190%);
+  --player-glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --player-glass-shadow: 0 16px 45px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
   /* Signature Electric Violet Palette */
   --electric-indigo: #6366F1;
   --electric-violet: #757BF8;

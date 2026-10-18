@@ -62,10 +62,10 @@
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  background: rgba(14, 17, 29, 0.82);
+  background: rgba(10, 13, 24, 0.65);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   flex-shrink: 0;
@@ -146,10 +146,10 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  background: rgba(14, 17, 29, 0.82);
+  background: rgba(10, 13, 24, 0.65);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
   box-sizing: border-box;
 }
@@ -248,10 +248,10 @@
   display: inline-block;
   padding: 6px 14px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.78);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 13, 24, 0.65);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #ffffff;
   font-size: 11.5px;
   font-weight: 500;
@@ -277,10 +277,10 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  background: rgba(14, 17, 29, 0.82);
+  background: rgba(10, 13, 24, 0.65);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
   box-sizing: border-box;
 }
@@ -473,10 +473,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(14, 17, 29, 0.82);
+  background: rgba(10, 13, 24, 0.65);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
@@ -583,10 +583,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(14, 17, 29, 0.82);
+  background: rgba(10, 13, 24, 0.65);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
   box-sizing: border-box;
 }
@@ -665,10 +665,10 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  background: rgba(14, 17, 29, 0.82);
+  background: rgba(10, 13, 24, 0.65);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
   box-sizing: border-box;
 }
@@ -694,6 +694,22 @@
 .player-speed-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
+}
+
+.player-speed-btn.is-boosting {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(37, 99, 235, 0.7);
+  animation: speedBoostBtnPulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes speedBoostBtnPulse {
+  from {
+    box-shadow: 0 0 8px rgba(37, 99, 235, 0.5);
+  }
+  to {
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.9);
+  }
 }
 
 .player-speed-btn:active {

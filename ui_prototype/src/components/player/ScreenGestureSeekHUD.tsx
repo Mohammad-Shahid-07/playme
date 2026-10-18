@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, type FC } from 'react';
+import { BOOST_PRESETS } from './QuickSpeedBoostHUD';
 import './ScreenGestureSeekHUD.css';
 
 export interface ScreenGestureSeekHUDProps {
@@ -8,6 +9,8 @@ export interface ScreenGestureSeekHUDProps {
   isLocked?: boolean;
   onLongPressStart?: () => void;
   onLongPressEnd?: () => void;
+  onLongPressSlide?: (targetSpeed: number) => void;
+  boostSpeed?: number;
 }
 
 interface GestureState {
@@ -44,12 +47,16 @@ export const ScreenGestureSeekHUD: FC<ScreenGestureSeekHUDProps> = ({
   isLocked = false,
   onLongPressStart,
   onLongPressEnd,
+  onLongPressSlide,
+  boostSpeed = 1.5,
 }) => {
   const [gesture, setGesture] = useState<GestureState | null>(null);
   const [showLockedAlert, setShowLockedAlert] = useState(false);
   const lockedTimeoutRef = useRef<number | null>(null);
   const longPressTimerRef = useRef<number | null>(null);
   const isLongPressingRef = useRef(false);
+  const longPressStartXRef = useRef(0);
+  const longPressInitialSpeedRef = useRef(boostSpeed);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
@@ -70,6 +77,8 @@ export const ScreenGestureSeekHUD: FC<ScreenGestureSeekHUDProps> = ({
     // Start Long-Press Detection (280ms hold)
     if (onLongPressStart) {
       isLongPressingRef.current = false;
+      longPressStartXRef.current = e.clientX;
+      longPressInitialSpeedRef.current = boostSpeed;
       if (longPressTimerRef.current) window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = window.setTimeout(() => {
         isLongPressingRef.current = true;
@@ -89,6 +98,19 @@ export const ScreenGestureSeekHUD: FC<ScreenGestureSeekHUDProps> = ({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    // If long-press is active, sliding horizontally scrubs through boost speeds
+    if (isLongPressingRef.current) {
+      if (onLongPressSlide) {
+        const deltaX = e.clientX - longPressStartXRef.current;
+        const initialIdx = BOOST_PRESETS.indexOf(longPressInitialSpeedRef.current);
+        const safeInitial = initialIdx >= 0 ? initialIdx : 3;
+        const stepOffset = Math.round(deltaX / 38);
+        const targetIdx = Math.max(0, Math.min(BOOST_PRESETS.length - 1, safeInitial + stepOffset));
+        onLongPressSlide(BOOST_PRESETS[targetIdx]);
+      }
+      return;
+    }
+
     if (!gesture || !gesture.isDragging) return;
 
     const deltaX = e.clientX - gesture.startX;
@@ -97,11 +119,6 @@ export const ScreenGestureSeekHUD: FC<ScreenGestureSeekHUDProps> = ({
     if (Math.abs(deltaX) > 8 && longPressTimerRef.current) {
       window.clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
-    }
-
-    // If long-press is active, do not seek
-    if (isLongPressingRef.current) {
-      return;
     }
 
     const sensitivity = 0.35;

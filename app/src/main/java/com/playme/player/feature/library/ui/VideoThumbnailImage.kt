@@ -26,6 +26,7 @@ fun VideoThumbnailImage(
     video: VideoItem,
     targetWidth: Int = 360,
     targetHeight: Int = 240,
+    contentScale: ContentScale = ContentScale.Crop,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -56,7 +57,7 @@ fun VideoThumbnailImage(
             Image(
                 bitmap = currentBitmap.asImageBitmap(),
                 contentDescription = video.title,
-                contentScale = ContentScale.Crop,
+                contentScale = contentScale,
                 modifier = Modifier.fillMaxSize()
             )
         } else {

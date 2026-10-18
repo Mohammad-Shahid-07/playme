@@ -23,6 +23,7 @@ import com.playme.player.core.designsystem.PlayMeTheme
 import com.playme.player.feature.library.ui.LibraryScreen
 import com.playme.player.feature.navigation.BottomNavBar
 import com.playme.player.feature.navigation.MainNavTab
+import com.playme.player.feature.navigation.MainTabPlaceholderView
 
 class MainActivity : ComponentActivity() {
 
@@ -53,10 +54,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             else -> {
-                                // Music, Browse, Settings placeholders
-                                LibraryScreen(
-                                    onVideoClick = { }
-                                )
+                                MainTabPlaceholderView(tab = currentTab)
                             }
                         }
 

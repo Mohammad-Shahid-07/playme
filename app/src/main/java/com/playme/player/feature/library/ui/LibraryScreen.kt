@@ -95,8 +95,8 @@ fun LibraryScreen(
             }
         }
 
-        // 4. Continue Watching Carousel
-        if (state.searchQuery.isEmpty() && state.selectedFolder == null && state.activeSubTab == VideoSubTab.VIDEOS) {
+        // 4. Continue Watching Carousel (Persistent across Videos & Folders subtabs)
+        if (state.searchQuery.isEmpty() && state.selectedFolder == null) {
             ContinueWatchingRow(
                 items = state.continueWatching,
                 onItemClick = { item ->
@@ -106,7 +106,7 @@ fun LibraryScreen(
             )
         }
 
-        // 5. Video Sub-Nav Bar (Videos/Folders, Sort, View mode)
+        // 5. Video Sub-Nav Bar (Videos / Folders, Sort, View mode)
         VideoSubNavBar(
             activeTab = state.activeSubTab,
             sortOption = state.sortOption,
@@ -123,17 +123,36 @@ fun LibraryScreen(
                     CircularProgressIndicator(color = Color(0xFF818CF8), strokeWidth = 2.5.dp)
                 }
             } else if (state.activeSubTab == VideoSubTab.FOLDERS && state.selectedFolder == null) {
-                // Folder List: 8px gap matching FolderList.css
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.folders) { folder ->
-                        FolderCardItem(
-                            folder = folder,
-                            onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
-                        )
+                // Folder List / Grid
+                if (state.viewMode == ViewMode.GRID) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(state.folders) { folder ->
+                            FolderCardItem(
+                                folder = folder,
+                                viewMode = ViewMode.GRID,
+                                onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.folders) { folder ->
+                            FolderCardItem(
+                                folder = folder,
+                                viewMode = ViewMode.LIST,
+                                onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
+                            )
+                        }
                     }
                 }
             } else {
@@ -152,7 +171,6 @@ fun LibraryScreen(
                         }
                     }
                 } else if (state.viewMode == ViewMode.GRID) {
-                    // Grid Mode: 2 columns, 10px gap matching VideoFeed.css
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier.fillMaxSize(),
@@ -169,7 +187,6 @@ fun LibraryScreen(
                         }
                     }
                 } else {
-                    // List Mode: 8px gap matching VideoFeed.css
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),

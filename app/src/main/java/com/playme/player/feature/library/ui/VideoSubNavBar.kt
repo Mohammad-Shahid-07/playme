@@ -1,23 +1,24 @@
 package com.playme.player.feature.library.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ViewList
-import androidx.compose.material.icons.rounded.GridView
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -27,11 +28,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.playme.player.core.designsystem.CheckmarkIcon
+import com.playme.player.core.designsystem.GridViewIcon
+import com.playme.player.core.designsystem.ListViewIcon
+import com.playme.player.core.designsystem.SortSlidersIcon
 import com.playme.player.core.model.SortOption
 import com.playme.player.core.model.VideoSubTab
 import com.playme.player.core.model.ViewMode
@@ -46,112 +50,146 @@ fun VideoSubNavBar(
     onViewModeToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showSortMenu by remember { mutableStateOf(false) }
+    var isSortMenuOpen by remember { mutableStateOf(false) }
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .padding(top = 2.dp)
     ) {
-        // Left: Videos / Folders Tab Buttons with Underline Indicator
+        // 1. Sub-Navigation Bar: Left Tabs & Right Controls
         Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            SubNavTextTab(
-                label = "Videos",
-                isActive = activeTab == VideoSubTab.VIDEOS,
-                onClick = { onTabChange(VideoSubTab.VIDEOS) }
-            )
-            SubNavTextTab(
-                label = "Folders",
-                isActive = activeTab == VideoSubTab.FOLDERS,
-                onClick = { onTabChange(VideoSubTab.FOLDERS) }
-            )
-        }
+            // Left: Videos / Folders Tab Buttons (gap: 16px)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                SubNavTabButton(
+                    label = "Videos",
+                    isActive = activeTab == VideoSubTab.VIDEOS,
+                    onClick = { onTabChange(VideoSubTab.VIDEOS) }
+                )
+                SubNavTabButton(
+                    label = "Folders",
+                    isActive = activeTab == VideoSubTab.FOLDERS,
+                    onClick = { onTabChange(VideoSubTab.FOLDERS) }
+                )
+            }
 
-        // Right: Sort & View Mode Controls (gap: 12px)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Sort Dropdown Button
-            Box {
-                Row(
-                    modifier = Modifier
-                        .clickable { showSortMenu = true }
-                        .padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Text(
-                        text = sortOption.name.lowercase().replaceFirstChar { it.uppercase() },
-                        color = Color(0xFFCBD5E1),
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.Normal
-                    )
-                    Icon(
-                        imageVector = Icons.Rounded.KeyboardArrowDown,
-                        contentDescription = "Sort Options",
-                        tint = Color(0xFFCBD5E1),
-                        modifier = Modifier.size(15.dp)
-                    )
+            // Right: Sort & View Mode Controls (gap: 12px)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Sort Dropdown Button
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickable { isSortMenuOpen = true }
+                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        SortSlidersIcon(color = Color(0xFFCBD5E1), size = 16.dp)
+                        Text(
+                            text = sortOptionLabel(sortOption),
+                            color = Color(0xFFCBD5E1),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    // Obsidian Popover Dropdown matching VideoSubNav.css
+                    DropdownMenu(
+                        expanded = isSortMenuOpen,
+                        onDismissRequest = { isSortMenuOpen = false },
+                        modifier = Modifier
+                            .background(Color(0xF00E111C))
+                            .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(10.dp))
+                    ) {
+                        SortOption.entries.forEach { option ->
+                            val isSelected = option == sortOption
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = sortOptionLabel(option),
+                                            color = if (isSelected) Color(0xFF818CF8) else Color(0xFFCBD5E1),
+                                            fontSize = 12.sp,
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                                        )
+                                        if (isSelected) {
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            CheckmarkIcon(color = Color(0xFF818CF8), size = 14.dp)
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    onSortChange(option)
+                                    isSortMenuOpen = false
+                                }
+                            )
+                        }
+                    }
                 }
 
-                DropdownMenu(
-                    expanded = showSortMenu,
-                    onDismissRequest = { showSortMenu = false },
-                    modifier = Modifier.background(Color(0xFF0F1220))
+                // Grid / List View Toggle Button
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable(onClick = onViewModeToggle),
+                    contentAlignment = Alignment.Center
                 ) {
-                    SortOption.entries.forEach { option ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    text = option.name.lowercase().replaceFirstChar { it.uppercase() },
-                                    color = if (option == sortOption) Color(0xFF818CF8) else Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (option == sortOption) FontWeight.Bold else FontWeight.Normal
-                                )
-                            },
-                            onClick = {
-                                onSortChange(option)
-                                showSortMenu = false
-                            }
-                        )
+                    if (viewMode == ViewMode.LIST) {
+                        GridViewIcon(color = Color(0xFFCBD5E1), size = 16.dp)
+                    } else {
+                        ListViewIcon(color = Color(0xFFCBD5E1), size = 16.dp)
                     }
                 }
             }
-
-            // View Mode Toggle (18px icon, #CBD5E1)
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickable(onClick = onViewModeToggle),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = if (viewMode == ViewMode.LIST) Icons.Rounded.GridView else Icons.AutoMirrored.Rounded.ViewList,
-                    contentDescription = "Toggle Grid/List",
-                    tint = Color(0xFFCBD5E1),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
         }
+
+        // 2. Section Header: "TODAY" or "DEVICE FOLDERS" (9.5px, bold, uppercase, #64748B)
+        Text(
+            text = if (activeTab == VideoSubTab.VIDEOS) "TODAY" else "DEVICE FOLDERS",
+            color = Color(0xFF64748B),
+            fontSize = 9.5.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.08.sp,
+            modifier = Modifier.padding(top = 8.dp, bottom = 6.dp)
+        )
     }
 }
 
 @Composable
-private fun SubNavTextTab(
+private fun SubNavTabButton(
     label: String,
     isActive: Boolean,
     onClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
-            .clickable(onClick = onClick)
-            .padding(bottom = 2.dp),
+            .width(IntrinsicSize.Max)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(top = 2.dp, bottom = 2.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -160,24 +198,26 @@ private fun SubNavTextTab(
             fontSize = 13.5.sp,
             fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium
         )
-
-        // Active Indicator Line: 2px bar #818CF8
+        Spacer(modifier = Modifier.height(3.dp))
         if (isActive) {
             Box(
                 modifier = Modifier
-                    .padding(top = 4.dp)
+                    .fillMaxWidth()
                     .height(2.dp)
-                    .fillMaxWidth(0.9f)
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = CircleShape,
-                        spotColor = Color(0x99818CF8)
-                    )
                     .clip(CircleShape)
                     .background(Color(0xFF818CF8))
             )
         } else {
-            Box(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(2.dp))
         }
+    }
+}
+
+private fun sortOptionLabel(option: SortOption): String {
+    return when (option) {
+        SortOption.NEWEST -> "Newest"
+        SortOption.NAME -> "Name"
+        SortOption.SIZE -> "Size"
+        SortOption.DURATION -> "Duration"
     }
 }

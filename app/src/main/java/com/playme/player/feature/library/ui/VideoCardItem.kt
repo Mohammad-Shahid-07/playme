@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,13 +28,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.playme.player.core.designsystem.PlayMeColors
 import com.playme.player.core.model.BadgeVariant
 import com.playme.player.core.model.VideoBadge
 import com.playme.player.core.model.VideoItem
@@ -54,6 +53,9 @@ fun VideoCardItem(
     }
 }
 
+/**
+ * Pixel-perfect List Card matching VideoCard.css lines 5 to 235
+ */
 @Composable
 private fun VideoListCard(
     video: VideoItem,
@@ -64,20 +66,17 @@ private fun VideoListCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(PlayMeColors.GlassCard)
-            .border(1.dp, PlayMeColors.GlassBorder, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
-        // Thumbnail Box
+        // Left Thumbnail: 142px x 72px, radius 9px, #11131E with 1px border rgba(255, 255, 255, 0.12)
         Box(
             modifier = Modifier
-                .width(110.dp)
-                .height(66.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(PlayMeColors.ObsidianChassis)
+                .size(width = 142.dp, height = 72.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color(0xFF11131E))
+                .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(9.dp))
         ) {
             AsyncImage(
                 model = video.thumbnailUrl,
@@ -85,81 +84,148 @@ private fun VideoListCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-            // Duration Pill
+
+            // Top-Right NEW Badge
+            if (video.isNew) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFFFBBF24), Color(0xFFF59E0B))
+                            )
+                        )
+                        .padding(horizontal = 4.5.dp, vertical = 1.5.dp)
+                ) {
+                    Text(
+                        text = "NEW",
+                        color = Color(0xFF0C0E18),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 0.05.sp,
+                        lineHeight = 9.sp
+                    )
+                }
+            }
+
+            // Bottom-Right Duration Badge: rgba(0, 0, 0, 0.85), 9.5px font
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(4.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(PlayMeColors.ObsidianDark.copy(alpha = 0.85f))
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                    .background(Color(0xD9000000))
+                    .padding(horizontal = 4.5.dp, vertical = 1.dp)
             ) {
                 Text(
                     text = video.durationFormatted,
-                    color = PlayMeColors.TextPrimary,
-                    fontSize = 10.sp,
-                    fontFamily = FontFamily.Monospace,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        // Content
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = video.title,
-                color = PlayMeColors.TextPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            // Subtitle: folder and file size
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = video.parentFolder,
-                    color = PlayMeColors.TextTertiary,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(text = "•", color = PlayMeColors.TextTertiary, fontSize = 11.sp)
-                Text(
-                    text = video.fileSizeFormatted,
-                    color = PlayMeColors.TextSecondary,
-                    fontSize = 11.sp
+                    color = Color.White,
+                    fontSize = 9.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 11.sp
                 )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Spec Badges
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                video.badges.take(3).forEach { badge ->
-                    SpecBadgePill(badge = badge)
+            // Watch Progress Bar: 2.5px
+            if (video.watchProgressPercent > 0f) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(2.5.dp)
+                        .background(Color(0x80000000))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(fraction = (video.watchProgressPercent / 100f).coerceIn(0f, 1f))
+                            .height(2.5.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF6366F1), Color(0xFF818CF8))
+                                )
+                            )
+                    )
                 }
             }
         }
 
-        IconButton(onClick = onMoreClick) {
+        // Middle Info: Exact 72px height matching thumbnail
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .height(72.dp)
+                .padding(top = 3.5.dp, bottom = 4.5.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Title + Metadata Group
+            Column(verticalArrangement = Arrangement.spacedBy(2.5.dp)) {
+                Text(
+                    text = video.title,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 16.sp
+                )
+
+                // Metadata: Year • FileSize • Format
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val metaText = listOfNotNull(
+                        video.year.ifEmpty { null },
+                        video.fileSizeFormatted.ifEmpty { null },
+                        video.format.ifEmpty { null }
+                    ).joinToString(" • ")
+
+                    Text(
+                        text = metaText,
+                        color = Color(0xFF8E95A5),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 13.sp
+                    )
+                }
+            }
+
+            // Spec Badges Row: 16px height, 9px font, transparent background
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                video.badges.take(4).forEach { badge ->
+                    CompactSpecBadge(badge = badge)
+                }
+            }
+        }
+
+        // Right Options Button: 72px vertically centering 3 dots
+        Box(
+            modifier = Modifier
+                .height(72.dp)
+                .width(24.dp)
+                .clickable(onClick = onMoreClick),
+            contentAlignment = Alignment.Center
+        ) {
             Icon(
                 imageVector = Icons.Rounded.MoreVert,
                 contentDescription = "Options",
-                tint = PlayMeColors.TextTertiary,
-                modifier = Modifier.size(20.dp)
+                tint = Color(0x61FFFFFF), // rgba(255, 255, 255, 0.38)
+                modifier = Modifier.size(18.dp)
             )
         }
     }
 }
 
+/**
+ * Pixel-perfect 2-Column Grid Card matching VideoCard.css lines 240 to 375
+ */
 @Composable
 private fun VideoGridCard(
     video: VideoItem,
@@ -169,10 +235,10 @@ private fun VideoGridCard(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(170.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(PlayMeColors.GlassCard)
-            .border(1.dp, PlayMeColors.GlassBorder, RoundedCornerShape(14.dp))
+            .aspectRatio(16f / 10.5f)
+            .clip(RoundedCornerShape(11.dp))
+            .background(Color(0xFF11131E))
+            .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(11.dp))
             .clickable(onClick = onClick)
     ) {
         AsyncImage(
@@ -186,96 +252,160 @@ private fun VideoGridCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(6.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             video.badges.firstOrNull()?.let { badge ->
-                SpecBadgePill(badge = badge)
-            } ?: Box(modifier = Modifier.size(1.dp))
+                Box(
+                    modifier = Modifier
+                        .height(15.dp)
+                        .clip(RoundedCornerShape(3.5.dp))
+                        .background(Color(0xB3000000))
+                        .border(1.dp, getBadgeBorderColor(badge.variant), RoundedCornerShape(3.5.dp))
+                        .padding(horizontal = 4.5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = badge.label,
+                        color = getBadgeTextColor(badge.variant),
+                        fontSize = 8.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 10.sp
+                    )
+                }
+            } ?: Spacer(modifier = Modifier.size(1.dp))
 
             if (video.isNew) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(PlayMeColors.ElectricViolet)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color(0xFFFBBF24), Color(0xFFF59E0B))
+                            )
+                        )
+                        .padding(horizontal = 4.5.dp, vertical = 1.5.dp)
                 ) {
-                    Text(text = "NEW", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "NEW",
+                        color = Color(0xFF0C0E18),
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        lineHeight = 9.sp
+                    )
                 }
             }
         }
 
-        // Bottom Gradient Overlay with Title & Duration
+        // Bottom Scrim Overlay: linear-gradient(180deg, rgba(12,14,24,0) 0%, rgba(12,14,24,0.72) 48%, rgba(12,14,24,0.96) 100%)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .background(
                     Brush.verticalGradient(
-                        listOf(Color.Transparent, PlayMeColors.ObsidianDark.copy(alpha = 0.95f))
+                        colors = listOf(
+                            Color(0x000C0E18),
+                            Color(0xB80C0E18),
+                            Color(0xF50C0E18)
+                        )
                     )
                 )
-                .padding(10.dp)
+                .padding(start = 8.dp, end = 8.dp, top = 26.dp, bottom = 6.dp)
         ) {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = video.title,
-                    color = PlayMeColors.TextPrimary,
-                    fontSize = 13.sp,
+                    color = Color.White,
+                    fontSize = 12.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = video.fileSizeFormatted,
-                        color = PlayMeColors.TextSecondary,
-                        fontSize = 11.sp
+                        color = Color(0xFFCBD5E1),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Normal
                     )
-                    Text(
-                        text = video.durationFormatted,
-                        color = PlayMeColors.LavenderText,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Medium
-                    )
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color(0xBF000000))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    ) {
+                        Text(
+                            text = video.durationFormatted,
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
+            }
+        }
+
+        // Bottom Progress Track (2.5px, #3B82F6)
+        if (video.watchProgressPercent > 0f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(2.5.dp)
+                    .background(Color(0x99000000))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction = (video.watchProgressPercent / 100f).coerceIn(0f, 1f))
+                        .height(2.5.dp)
+                        .background(Color(0xFF3B82F6))
+                )
             }
         }
     }
 }
 
+/**
+ * Compact 16px spec badge with 1px border and transparent background
+ */
 @Composable
-private fun SpecBadgePill(badge: VideoBadge) {
-    val bgColor = when (badge.variant) {
-        BadgeVariant.GOLD -> PlayMeColors.AmberBoost.copy(alpha = 0.15f)
-        BadgeVariant.BLUE -> PlayMeColors.ElectricViolet.copy(alpha = 0.15f)
-        BadgeVariant.GREEN -> PlayMeColors.EmeraldActive.copy(alpha = 0.15f)
-        BadgeVariant.GRAY -> PlayMeColors.GlassSurface
-    }
-    val textColor = when (badge.variant) {
-        BadgeVariant.GOLD -> PlayMeColors.AmberBoost
-        BadgeVariant.BLUE -> PlayMeColors.ElectricViolet
-        BadgeVariant.GREEN -> PlayMeColors.EmeraldActive
-        BadgeVariant.GRAY -> PlayMeColors.TextSecondary
-    }
-
+private fun CompactSpecBadge(badge: VideoBadge) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(bgColor)
-            .padding(horizontal = 5.dp, vertical = 2.dp)
+            .height(16.dp)
+            .clip(RoundedCornerShape(3.5.dp))
+            .border(1.dp, getBadgeBorderColor(badge.variant), RoundedCornerShape(3.5.dp))
+            .padding(horizontal = 5.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = badge.label,
-            color = textColor,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
+            color = getBadgeTextColor(badge.variant),
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 10.sp
         )
     }
+}
+
+private fun getBadgeBorderColor(variant: BadgeVariant): Color = when (variant) {
+    BadgeVariant.GOLD -> Color(0xFFD97706) // #d97706
+    BadgeVariant.BLUE -> Color(0x666366F1) // rgba(99, 102, 241, 0.4)
+    BadgeVariant.GRAY -> Color(0x38FFFFFF) // rgba(255, 255, 255, 0.22)
+    BadgeVariant.GREEN -> Color(0xB310B981) // rgba(16, 185, 129, 0.7)
+}
+
+private fun getBadgeTextColor(variant: BadgeVariant): Color = when (variant) {
+    BadgeVariant.GOLD -> Color(0xFFFACC15) // #facc15
+    BadgeVariant.BLUE -> Color(0xFFA5B4FC) // #a5b4fc
+    BadgeVariant.GRAY -> Color(0xB8FFFFFF) // rgba(255, 255, 255, 0.72)
+    BadgeVariant.GREEN -> Color(0xFF34D399) // #34d399
 }

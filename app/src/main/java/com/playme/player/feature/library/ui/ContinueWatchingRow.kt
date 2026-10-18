@@ -17,22 +17,20 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.playme.player.core.designsystem.PlayMeColors
 import com.playme.player.core.model.ContinueWatchingItem
 
 @Composable
@@ -46,50 +44,63 @@ fun ContinueWatchingRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp)
+            .padding(bottom = 14.dp)
     ) {
-        // Section Header
+        // Header Row: Title + Count Badge on left, Clear button on right
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 18.dp, vertical = 6.dp),
+                .padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Icon(
-                imageVector = Icons.Rounded.History,
-                contentDescription = null,
-                tint = PlayMeColors.ElectricViolet,
-                modifier = Modifier.size(18.dp)
-            )
-            Text(
-                text = "Continue Watching",
-                color = PlayMeColors.TextPrimary,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(PlayMeColors.GlassSurface)
-                    .padding(horizontal = 7.dp, vertical = 1.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = items.size.toString(),
-                    color = PlayMeColors.LavenderText,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
+                    text = "Continue Watching",
+                    color = Color.White,
+                    fontSize = 13.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = (-0.01).sp
                 )
+
+                // Count Badge
+                Box(
+                    modifier = Modifier
+                        .height(16.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x2E6366F1)) // rgba(99, 102, 241, 0.18)
+                        .border(1.dp, Color(0x4D6366F1), CircleShape) // rgba(99, 102, 241, 0.3)
+                        .padding(horizontal = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = items.size.toString(),
+                        color = Color(0xFFA5B4FC),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 10.sp
+                    )
+                }
             }
+
+            Text(
+                text = "Clear",
+                color = Color(0xFF8E95A5),
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.clickable { /* Clear history */ }
+            )
         }
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        // Horizontal Carousel
+        // Horizontal Carousel: 10px gap matching prototype
         LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(items) { item ->
                 ContinueWatchingCard(item = item, onClick = { onItemClick(item) })
@@ -105,101 +116,74 @@ private fun ContinueWatchingCard(
 ) {
     Column(
         modifier = Modifier
-            .width(180.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(PlayMeColors.GlassCard)
-            .border(1.dp, PlayMeColors.GlassBorder, RoundedCornerShape(14.dp))
+            .width(136.dp)
             .clickable(onClick = onClick)
-            .padding(8.dp)
     ) {
-        // Thumbnail Box
+        // Thumbnail Container: 136px x 72px, radius 9px, #11131E with 1px border
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(PlayMeColors.ObsidianChassis)
+                .width(136.dp)
+                .height(72.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(Color(0xFF11131E))
+                .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(9.dp))
         ) {
             AsyncImage(
                 model = item.thumbnailUrl,
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxWidth().height(100.dp)
+                modifier = Modifier.size(136.dp, 72.dp)
             )
 
-            // Play Overlay Icon
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .align(Alignment.Center)
-                    .clip(CircleShape)
-                    .background(PlayMeColors.GlassElevated)
-                    .border(1.dp, PlayMeColors.GlassBorderHover, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.PlayArrow,
-                    contentDescription = "Play",
-                    tint = PlayMeColors.TextPrimary,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            // Duration Pill
+            // Duration Badge: bottom 4px, right 4px, rgba(0,0,0,0.85), 9.5px font
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(6.dp)
+                    .padding(4.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(PlayMeColors.ObsidianDark.copy(alpha = 0.8f))
-                    .padding(horizontal = 5.dp, vertical = 2.dp)
+                    .background(Color(0xD9000000))
+                    .padding(horizontal = 4.5.dp, vertical = 1.dp)
             ) {
                 Text(
                     text = item.durationFormatted,
-                    color = PlayMeColors.TextPrimary,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Medium
+                    color = Color.White,
+                    fontSize = 9.5.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 11.sp
+                )
+            }
+
+            // Watch Progress Bar: 2.5px track at bottom with #6366F1 -> #818CF8
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(2.5.dp)
+                    .background(Color(0x80000000))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(fraction = (item.progressPercent / 100f).coerceIn(0f, 1f))
+                        .height(2.5.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFF6366F1), Color(0xFF818CF8))
+                            )
+                        )
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Title
+        // Title: 13px, font-weight 500, white, margin-top 5px
         Text(
             text = item.title,
-            color = PlayMeColors.TextPrimary,
+            color = Color.White,
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(top = 5.dp)
         )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Time Left
-        Text(
-            text = item.timeLeftFormatted,
-            color = PlayMeColors.LavenderText,
-            fontSize = 11.sp
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        // Progress Bar
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .clip(CircleShape)
-                .background(PlayMeColors.GlassBorder)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(fraction = (item.progressPercent / 100f).coerceIn(0f, 1f))
-                    .height(3.dp)
-                    .background(PlayMeColors.VioletGradient)
-            )
-        }
     }
 }

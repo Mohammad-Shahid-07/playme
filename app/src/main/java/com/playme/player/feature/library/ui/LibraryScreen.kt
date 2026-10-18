@@ -31,11 +31,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.playme.player.core.designsystem.PlayMeColors
 import com.playme.player.core.model.VideoItem
 import com.playme.player.core.model.VideoSubTab
 import com.playme.player.core.model.ViewMode
@@ -50,12 +50,15 @@ fun LibraryScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    // Outer Viewport: #080910 Workbench Obsidian matching VideoPlayer.css
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(PlayMeColors.ObsidianDark)
+            .background(Color(0xFF080910))
+            .padding(horizontal = 10.dp)
+            .padding(top = 6.dp)
     ) {
-        // 1. Top Brand & Search Bar
+        // 1. Home App Brand Top Bar
         LibraryTopBar(
             searchQuery = state.searchQuery,
             onSearchQueryChange = { viewModel.onAction(LibraryAction.SetSearchQuery(it)) }
@@ -64,35 +67,35 @@ fun LibraryScreen(
         // 2. Permission Banner (Deep Storage)
         PermissionBanner(hasDeepAccess = state.hasDeepScanAccess)
 
-        // 3. Folder Drill-Down Header (if inside a folder)
+        // 3. Folder Drill-Down Back Header
         state.selectedFolder?.let { folder ->
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(PlayMeColors.GlassSurface)
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0x14FFFFFF))
                     .clickable { viewModel.onAction(LibraryAction.SelectFolder(null)) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = "Back to folders",
-                    tint = PlayMeColors.ElectricViolet,
-                    modifier = Modifier.size(18.dp)
+                    tint = Color(0xFF818CF8),
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = folder.name,
-                    color = PlayMeColors.TextPrimary,
-                    fontSize = 14.sp,
+                    color = Color.White,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
             }
         }
 
-        // 4. Continue Watching Row (only on main video list without active search)
+        // 4. Continue Watching Carousel
         if (state.searchQuery.isEmpty() && state.selectedFolder == null && state.activeSubTab == VideoSubTab.VIDEOS) {
             ContinueWatchingRow(
                 items = state.continueWatching,
@@ -103,7 +106,7 @@ fun LibraryScreen(
             )
         }
 
-        // 5. Sub-Nav Bar (Videos/Folders toggle, Sort, View mode)
+        // 5. Video Sub-Nav Bar (Videos/Folders, Sort, View mode)
         VideoSubNavBar(
             activeTab = state.activeSubTab,
             sortOption = state.sortOption,
@@ -117,14 +120,14 @@ fun LibraryScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = PlayMeColors.ElectricViolet)
+                    CircularProgressIndicator(color = Color(0xFF818CF8), strokeWidth = 2.5.dp)
                 }
             } else if (state.activeSubTab == VideoSubTab.FOLDERS && state.selectedFolder == null) {
-                // Folders List
+                // Folder List: 8px gap matching FolderList.css
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 96.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.folders) { folder ->
                         FolderCardItem(
@@ -141,20 +144,21 @@ fun LibraryScreen(
                             Icon(
                                 imageVector = Icons.Rounded.VideocamOff,
                                 contentDescription = null,
-                                tint = PlayMeColors.TextTertiary,
-                                modifier = Modifier.size(48.dp)
+                                tint = Color(0x61FFFFFF),
+                                modifier = Modifier.size(42.dp)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(text = "No videos found", color = PlayMeColors.TextSecondary, fontSize = 15.sp)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(text = "No videos found", color = Color(0xFF8E95A5), fontSize = 13.5.sp)
                         }
                     }
                 } else if (state.viewMode == ViewMode.GRID) {
+                    // Grid Mode: 2 columns, 10px gap matching VideoFeed.css
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(2),
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 96.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(top = 6.dp, bottom = 88.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         items(state.displayedVideos) { video ->
                             VideoCardItem(
@@ -165,10 +169,11 @@ fun LibraryScreen(
                         }
                     }
                 } else {
+                    // List Mode: 8px gap matching VideoFeed.css
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(state.displayedVideos) { video ->
                             VideoCardItem(

@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
             PlayMeTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = PlayMeColors.ObsidianDark
+                    color = PlayMeColors.Workbench
                 ) {
                     var currentTab by remember { mutableStateOf(MainNavTab.VIDEO) }
 

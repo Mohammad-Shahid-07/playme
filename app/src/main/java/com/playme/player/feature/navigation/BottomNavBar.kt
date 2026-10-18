@@ -13,12 +13,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -33,7 +32,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.playme.player.core.designsystem.PlayMeColors
 
 enum class MainNavTab {
     VIDEO, MUSIC, BROWSE, SETTINGS
@@ -49,122 +47,149 @@ fun BottomNavBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Dock Chassis
+        // Floating Capsule Dock: 60px height, rgba(10, 13, 24, 0.75), 1px solid rgba(255, 255, 255, 0.1)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
-                .clip(RoundedCornerShape(32.dp))
-                .background(PlayMeColors.GlassElevated)
-                .border(1.dp, PlayMeColors.GlassBorderHover, RoundedCornerShape(32.dp))
-                .padding(horizontal = 12.dp),
+                .height(60.dp)
+                .shadow(
+                    elevation = 20.dp,
+                    shape = CircleShape,
+                    spotColor = Color(0xCC000000),
+                    ambientColor = Color(0x206366F1)
+                )
+                .clip(CircleShape)
+                .background(Color(0xBF0A0D18))
+                .border(1.dp, Color(0x1AFFFFFF), CircleShape)
+                .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left 2 items: Video & Music
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    NavTabItem(
-                        icon = Icons.Rounded.Videocam,
-                        label = "Video",
-                        isSelected = activeTab == MainNavTab.VIDEO,
-                        onClick = { onTabSelected(MainNavTab.VIDEO) }
-                    )
-                    NavTabItem(
-                        icon = Icons.Rounded.MusicNote,
-                        label = "Music",
-                        isSelected = activeTab == MainNavTab.MUSIC,
-                        onClick = { onTabSelected(MainNavTab.MUSIC) }
-                    )
-                }
+                // Tab 1: Video
+                NavTabButton(
+                    icon = Icons.Rounded.Videocam,
+                    label = "Video",
+                    isActive = activeTab == MainNavTab.VIDEO,
+                    onClick = { onTabSelected(MainNavTab.VIDEO) },
+                    modifier = Modifier.weight(1f)
+                )
 
-                // Center Spacer for Protruding Play Button
-                Box(modifier = Modifier.size(56.dp))
+                // Tab 2: Music
+                NavTabButton(
+                    icon = Icons.Rounded.Headphones,
+                    label = "Music",
+                    isActive = activeTab == MainNavTab.MUSIC,
+                    onClick = { onTabSelected(MainNavTab.MUSIC) },
+                    modifier = Modifier.weight(1f)
+                )
 
-                // Right 2 items: Browse & Settings
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    NavTabItem(
-                        icon = Icons.Rounded.Folder,
-                        label = "Browse",
-                        isSelected = activeTab == MainNavTab.BROWSE,
-                        onClick = { onTabSelected(MainNavTab.BROWSE) }
-                    )
-                    NavTabItem(
-                        icon = Icons.Rounded.Settings,
-                        label = "Settings",
-                        isSelected = activeTab == MainNavTab.SETTINGS,
-                        onClick = { onTabSelected(MainNavTab.SETTINGS) }
-                    )
-                }
+                // Center Slot Spacer (flex: 1.1)
+                Box(
+                    modifier = Modifier
+                        .weight(1.1f)
+                        .height(60.dp)
+                )
+
+                // Tab 3: Browse
+                NavTabButton(
+                    icon = Icons.Rounded.Folder,
+                    label = "Browse",
+                    isActive = activeTab == MainNavTab.BROWSE,
+                    onClick = { onTabSelected(MainNavTab.BROWSE) },
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Tab 4: Settings
+                NavTabButton(
+                    icon = Icons.Rounded.Tune,
+                    label = "Settings",
+                    isActive = activeTab == MainNavTab.SETTINGS,
+                    onClick = { onTabSelected(MainNavTab.SETTINGS) },
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
 
-        // Protruding 3D Big Play Button
+        // Center Protruding Big Play Button (50px x 50px, top: -9px)
         Box(
             modifier = Modifier
-                .offset(y = (-14).dp)
-                .size(58.dp)
-                .shadow(12.dp, CircleShape, spotColor = PlayMeColors.ElectricViolet)
+                .offset(y = (-9).dp)
+                .size(50.dp)
+                .shadow(
+                    elevation = 16.dp,
+                    shape = CircleShape,
+                    spotColor = Color(0x806366F1)
+                )
                 .clip(CircleShape)
                 .background(
-                    Brush.verticalGradient(
-                        listOf(PlayMeColors.ElectricViolet, PlayMeColors.DeepViolet)
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFF6366F1), Color(0xFF818CF8))
                     )
                 )
-                .border(2.dp, PlayMeColors.LavenderThumb.copy(alpha = 0.8f), CircleShape)
-                .clickable(onClick = onBigPlayClick),
+                .clickable(onClick = onBigPlayClick)
+                .padding(3.dp), // 3px outer ring padding
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Rounded.PlayArrow,
-                contentDescription = "Quick Play",
-                tint = Color.White,
-                modifier = Modifier.size(30.dp)
-            )
+            // Inner Dome: #0F111E
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF0F111E))
+                    .border(1.dp, Color(0x14FFFFFF), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = "Play",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .padding(start = 2.dp)
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun NavTabItem(
+private fun NavTabButton(
     icon: ImageVector,
     label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
+    isActive: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val activeColor = Color(0xFF818CF8)
+    val inactiveColor = Color(0x80FFFFFF) // rgba(255, 255, 255, 0.50)
+
     Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
+        modifier = modifier
+            .clip(CircleShape)
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (isSelected) PlayMeColors.ElectricViolet else PlayMeColors.TextTertiary,
-            modifier = Modifier.size(22.dp)
+            tint = if (isActive) activeColor else inactiveColor,
+            modifier = Modifier.size(21.dp)
         )
         Text(
             text = label,
-            color = if (isSelected) PlayMeColors.TextPrimary else PlayMeColors.TextTertiary,
-            fontSize = 11.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+            color = if (isActive) activeColor else inactiveColor,
+            fontSize = 10.5.sp,
+            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Medium,
+            letterSpacing = (-0.01).sp,
+            lineHeight = 10.5.sp
         )
     }
 }

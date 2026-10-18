@@ -57,33 +57,6 @@
             </intent-filter>
         </activity>
 
-        <!-- MediaSessionService for background audio playback -->
-        <service
-            android:name=".core.player.PlaybackService"
-            android:exported="true"
-            android:foregroundServiceType="mediaPlayback">
-            <intent-filter>
-                <action android:name="androidx.media3.session.MediaSessionService" />
-                <action android:name="android.media.browse.MediaBrowserService" />
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
-            </intent-filter>
-        </service>
-
-        <!-- Media Button Receiver for system media controls and hardware/Bluetooth buttons -->
-        <receiver
-            android:name="androidx.media3.session.MediaButtonReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
-            </intent-filter>
-        </receiver>
-
-        <!-- Floating Draggable Window Service -->
-        <service
-            android:name=".feature.pip.FloatingPlayerService"
-            android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
-
     </application>
 
 </manifest>

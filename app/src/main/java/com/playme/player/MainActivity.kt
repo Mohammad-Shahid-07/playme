@@ -4,12 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
 import com.playme.player.core.designsystem.PlayMeColors
 import com.playme.player.core.designsystem.PlayMeTheme
-import com.playme.player.feature.player.ui.LandscapePlayerScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -23,9 +26,16 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = PlayMeColors.ObsidianDark
                 ) {
-                    LandscapePlayerScreen(
-                        onClose = { finish() }
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "PlayMe",
+                            color = PlayMeColors.TextSecondary,
+                            fontSize = 20.sp
+                        )
+                    }
                 }
             }
         }

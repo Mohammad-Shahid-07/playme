@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,7 +48,8 @@ fun BottomNavBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            .navigationBarsPadding()
+            .padding(start = 16.dp, end = 16.dp, bottom = 10.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
         // Floating Capsule Dock: 60px height, rgba(10, 13, 24, 0.75), 1px solid rgba(255, 255, 255, 0.1)

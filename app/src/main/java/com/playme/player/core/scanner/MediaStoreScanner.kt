@@ -69,7 +69,11 @@ class MediaStoreScanner(private val context: Context) {
 
                     val badges = mutableListOf<VideoBadge>()
                     if (resolution.isNotEmpty()) {
-                        val variant = if (resolution == "4K") BadgeVariant.GOLD else BadgeVariant.BLUE
+                        val variant = when (resolution) {
+                            "4K" -> BadgeVariant.GOLD
+                            "FHD" -> BadgeVariant.GRAY
+                            else -> BadgeVariant.BLUE
+                        }
                         badges.add(VideoBadge(resolution, variant))
                     }
                     badges.add(VideoBadge(format, BadgeVariant.GRAY))
@@ -108,8 +112,8 @@ class MediaStoreScanner(private val context: Context) {
         return when {
             maxDim >= 3840 || minDim >= 2160 -> "4K"
             maxDim >= 2560 || minDim >= 1440 -> "2K"
-            maxDim >= 1920 || minDim >= 1080 -> "1080p"
-            maxDim >= 1280 || minDim >= 720 -> "720p"
+            maxDim >= 1920 || minDim >= 1080 -> "FHD"
+            maxDim >= 1280 || minDim >= 720 -> "HD"
             minDim >= 480 -> "480p"
             else -> "SD"
         }

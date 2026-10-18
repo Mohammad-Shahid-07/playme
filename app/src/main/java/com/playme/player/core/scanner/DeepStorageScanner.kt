@@ -99,7 +99,8 @@ class DeepStorageScanner(private val context: Context) {
             val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
             val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
             if (width > 0 && height > 0) {
-                resolution = if (maxOf(width, height) >= 3840) "4K" else if (maxOf(width, height) >= 1920) "1080p" else "720p"
+                val maxDim = maxOf(width, height)
+                resolution = if (maxDim >= 3840) "4K" else if (maxDim >= 1920) "FHD" else if (maxDim >= 1280) "HD" else "SD"
             }
             retriever.release()
         } catch (_: Exception) {
@@ -107,7 +108,11 @@ class DeepStorageScanner(private val context: Context) {
         }
 
         val badges = mutableListOf<VideoBadge>()
-        val variant = if (resolution == "4K") BadgeVariant.GOLD else BadgeVariant.BLUE
+        val variant = when (resolution) {
+            "4K" -> BadgeVariant.GOLD
+            "FHD" -> BadgeVariant.GRAY
+            else -> BadgeVariant.BLUE
+        }
         badges.add(VideoBadge(resolution, variant))
         badges.add(VideoBadge(format, BadgeVariant.GRAY))
 

@@ -13,11 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -26,8 +29,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +46,7 @@ import com.playme.player.core.model.VideoSubTab
 import com.playme.player.core.model.ViewMode
 import com.playme.player.feature.library.model.LibraryAction
 import com.playme.player.feature.library.vm.LibraryViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LibraryScreen(
@@ -49,14 +55,32 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
+    val pagerState = rememberPagerState(initialPage = 0) { 2 }
+    val coroutineScope = rememberCoroutineScope()
 
-    // Outer Viewport: #080910 Workbench Obsidian matching VideoPlayer.css
+    // Sync pager swipe with ViewModel active sub-tab
+    LaunchedEffect(pagerState.currentPage) {
+        val tab = if (pagerState.currentPage == 0) VideoSubTab.VIDEOS else VideoSubTab.FOLDERS
+        if (state.activeSubTab != tab) {
+            viewModel.onAction(LibraryAction.SetSubTab(tab))
+        }
+    }
+
+    LaunchedEffect(state.activeSubTab) {
+        val targetPage = if (state.activeSubTab == VideoSubTab.VIDEOS) 0 else 1
+        if (pagerState.currentPage != targetPage) {
+            pagerState.animateScrollToPage(targetPage)
+        }
+    }
+
+    // Outer Viewport with statusBarsPadding() matching DeviceFrame status bar in prototype
     Column(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF080910))
+            .statusBarsPadding()
             .padding(horizontal = 10.dp)
-            .padding(top = 6.dp)
+            .padding(top = 4.dp)
     ) {
         // 1. Home App Brand Top Bar
         LibraryTopBar(
@@ -95,7 +119,7 @@ fun LibraryScreen(
             }
         }
 
-        // 4. Continue Watching Carousel (Persistent across Videos & Folders subtabs)
+        // 4. Continue Watching Carousel (Persistent across Videos & Folders)
         if (state.searchQuery.isEmpty() && state.selectedFolder == null) {
             ContinueWatchingRow(
                 items = state.continueWatching,
@@ -111,97 +135,128 @@ fun LibraryScreen(
             activeTab = state.activeSubTab,
             sortOption = state.sortOption,
             viewMode = state.viewMode,
-            onTabChange = { viewModel.onAction(LibraryAction.SetSubTab(it)) },
+            onTabChange = { tab ->
+                val targetPage = if (tab == VideoSubTab.VIDEOS) 0 else 1
+                coroutineScope.launch { pagerState.animateScrollToPage(targetPage) }
+                viewModel.onAction(LibraryAction.SetSubTab(tab))
+            },
             onSortChange = { viewModel.onAction(LibraryAction.SetSortOption(it)) },
             onViewModeToggle = { viewModel.onAction(LibraryAction.ToggleViewMode) }
         )
 
-        // 6. Main Feed Content
-        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            if (state.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFF818CF8), strokeWidth = 2.5.dp)
-                }
-            } else if (state.activeSubTab == VideoSubTab.FOLDERS && state.selectedFolder == null) {
-                // Folder List / Grid
-                if (state.viewMode == ViewMode.GRID) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(state.folders) { folder ->
-                            FolderCardItem(
-                                folder = folder,
-                                viewMode = ViewMode.GRID,
-                                onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
-                            )
+        // 6. Smooth Swipable Animated Pager for Videos & Folders
+        if (state.isLoading) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Color(0xFF818CF8), strokeWidth = 2.5.dp)
+            }
+        } else {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                userScrollEnabled = state.selectedFolder == null
+            ) { page ->
+                if (page == 0) {
+                    // Page 0: Videos Feed with lazy keys for stutter-free scrolling
+                    if (state.displayedVideos.isEmpty()) {
+                        EmptyVideosView()
+                    } else if (state.viewMode == ViewMode.GRID) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(
+                                items = state.displayedVideos,
+                                key = { it.id },
+                                contentType = { "video_card_grid" }
+                            ) { video ->
+                                VideoCardItem(
+                                    video = video,
+                                    viewMode = ViewMode.GRID,
+                                    onClick = { onVideoClick(video) }
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = state.displayedVideos,
+                                key = { it.id },
+                                contentType = { "video_card_list" }
+                            ) { video ->
+                                VideoCardItem(
+                                    video = video,
+                                    viewMode = ViewMode.LIST,
+                                    onClick = { onVideoClick(video) }
+                                )
+                            }
                         }
                     }
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.folders) { folder ->
-                            FolderCardItem(
-                                folder = folder,
-                                viewMode = ViewMode.LIST,
-                                onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
-                            )
+                    // Page 1: Folders Feed
+                    if (state.viewMode == ViewMode.GRID) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(
+                                items = state.folders,
+                                key = { it.id },
+                                contentType = { "folder_card_grid" }
+                            ) { folder ->
+                                FolderCardItem(
+                                    folder = folder,
+                                    viewMode = ViewMode.GRID,
+                                    onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
+                                )
+                            }
                         }
-                    }
-                }
-            } else {
-                // Videos Feed
-                if (state.displayedVideos.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Rounded.VideocamOff,
-                                contentDescription = null,
-                                tint = Color(0x61FFFFFF),
-                                modifier = Modifier.size(42.dp)
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(text = "No videos found", color = Color(0xFF8E95A5), fontSize = 13.5.sp)
-                        }
-                    }
-                } else if (state.viewMode == ViewMode.GRID) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 6.dp, bottom = 88.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(state.displayedVideos) { video ->
-                            VideoCardItem(
-                                video = video,
-                                viewMode = ViewMode.GRID,
-                                onClick = { onVideoClick(video) }
-                            )
-                        }
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(state.displayedVideos) { video ->
-                            VideoCardItem(
-                                video = video,
-                                viewMode = ViewMode.LIST,
-                                onClick = { onVideoClick(video) }
-                            )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(top = 4.dp, bottom = 88.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(
+                                items = state.folders,
+                                key = { it.id },
+                                contentType = { "folder_card_list" }
+                            ) { folder ->
+                                FolderCardItem(
+                                    folder = folder,
+                                    viewMode = ViewMode.LIST,
+                                    onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
+                                )
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyVideosView() {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = Icons.Rounded.VideocamOff,
+                contentDescription = null,
+                tint = Color(0x61FFFFFF),
+                modifier = Modifier.size(42.dp)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(text = "No videos found", color = Color(0xFF8E95A5), fontSize = 13.5.sp)
         }
     }
 }

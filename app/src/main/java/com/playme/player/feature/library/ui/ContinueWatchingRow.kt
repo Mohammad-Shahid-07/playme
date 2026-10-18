@@ -102,7 +102,10 @@ fun ContinueWatchingRow(
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(items) { item ->
+            items(
+                items = items,
+                key = { it.id }
+            ) { item ->
                 ContinueWatchingCard(item = item, onClick = { onItemClick(item) })
             }
         }
@@ -114,6 +117,16 @@ private fun ContinueWatchingCard(
     item: ContinueWatchingItem,
     onClick: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val imageRequest = androidx.compose.runtime.remember(item.thumbnailUrl) {
+        coil3.request.ImageRequest.Builder(context)
+            .data(item.thumbnailUrl)
+            .size(coil3.size.Size(300, 160))
+            .memoryCacheKey(item.id)
+            .diskCacheKey(item.id)
+            .build()
+    }
+
     Column(
         modifier = Modifier
             .width(136.dp)
@@ -129,7 +142,7 @@ private fun ContinueWatchingCard(
                 .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(9.dp))
         ) {
             AsyncImage(
-                model = item.thumbnailUrl,
+                model = imageRequest,
                 contentDescription = item.title,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(136.dp, 72.dp)

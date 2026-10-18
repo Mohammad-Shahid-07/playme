@@ -1,0 +1,192 @@
+/* ==========================================================================
+   PlayMe Design System — Core Variables & Glass Foundation
+   ========================================================================== */
+
+:root {
+  /* Surfaces & Backgrounds */
+  --bg-obsidian-dark: #0C0E18;
+  --bg-obsidian-chassis: #0C0D16;
+  --bg-workbench: #080910;
+  --glass-surface: rgba(255, 255, 255, 0.05);
+  --glass-surface-elevated: rgba(11, 13, 23, 0.92);
+  --glass-card: rgba(14, 16, 28, 0.40);
+  --glass-card-hover: rgba(20, 23, 39, 0.80);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.16);
+
+  /* Signature Electric Violet Palette */
+  --electric-indigo: #6366F1;
+  --electric-violet: #757BF8;
+  --deep-violet: #8B5CF6;
+  --ultraviolet: #A855F7;
+  --lavender-thumb: #9B9EFF;
+  --lavender-text: #A5B4FC;
+  --lavender-glow: rgba(117, 123, 248, 0.5);
+
+  /* Functional Accents */
+  --amber-boost: #F59E0B;
+  --amber-light: #FCD34D;
+  --emerald-active: #00D287;
+  --crimson-alert: #FF334B;
+  --cyan-diagnostics: #38BDF8;
+
+  /* Typography */
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Motion */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 0.18s;
+  --duration-normal: 0.3s;
+}
+
+/* Reset & Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-workbench);
+  color: #ffffff;
+  font-family: var(--font-body);
+  overflow: hidden;
+  user-select: none;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-workbench);
+  overflow: hidden;
+}
+
+/* Material Symbols Rounded Styling */
+.material-symbols-rounded {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  direction: ltr;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.material-symbols-rounded.filled {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Clean Invisible Scrollbars */
+::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ==========================================================================
+   Atmospheric Ambient Neon Glows
+   ========================================================================== */
+@keyframes atmosphericPulse1 {
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.45; }
+  50% { transform: scale(1.12) translate(12px, -12px); opacity: 0.70; }
+}
+
+@keyframes atmosphericPulse2 {
+  0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.40; }
+  50% { transform: scale(1.15) translate(-12px, 12px); opacity: 0.65; }
+}
+
+.glow-indigo {
+  animation: atmosphericPulse1 12s ease-in-out infinite alternate;
+}
+.glow-violet {
+  animation: atmosphericPulse2 15s ease-in-out infinite alternate;
+}
+.glow-midnight {
+  animation: atmosphericPulse1 18s ease-in-out infinite alternate-reverse;
+}
+
+/* ==========================================================================
+   Glassmorphism Surface Utilities
+   ========================================================================== */
+
+/* Frosted Glass Card */
+.cozy-glass {
+  background: var(--glass-surface);
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 12px 32px -10px rgba(0, 0, 0, 0.65);
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+.cozy-glass:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--glass-border-hover);
+}
+
+/* Elevated Floating Navigation Bar & Bottom Sheets */
+.cozy-glass-elevated {
+  background: var(--glass-surface-elevated);
+  backdrop-filter: blur(36px) saturate(195%);
+  -webkit-backdrop-filter: blur(36px) saturate(195%);
+  border: 1px solid var(--glass-border);
+  box-shadow: 
+    0 20px 50px -10px rgba(0, 0, 0, 0.9),
+    0 0 28px rgba(117, 123, 248, 0.15);
+}
+
+/* Interactive Pill Button */
+.cozy-pill {
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  color: rgba(255, 255, 255, 0.78);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-spring);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-body);
+}
+.cozy-pill:hover {
+  background: rgba(255, 255, 255, 0.11);
+  color: #ffffff;
+  border-color: var(--glass-border-hover);
+}
+.cozy-pill:active {
+  transform: scale(0.95);
+}
+
+/* Active Electric Violet Pill */
+.cozy-pill-active {
+  background: linear-gradient(135deg, #6366f1, #757bf8, #8b5cf6) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 
+    0 0 20px rgba(117, 123, 248, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.45) !important;
+  font-weight: 600;
+}

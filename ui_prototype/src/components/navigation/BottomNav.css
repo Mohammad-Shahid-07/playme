@@ -1,0 +1,169 @@
+/* ==========================================================================
+   PlayMe Clean Floating Capsule Bottom Navigation Dock (No Neon)
+   ========================================================================== */
+
+.bottom-nav-dock {
+  position: absolute;
+  bottom: 24px; /* Floating clearance above phone bottom & home indicator */
+  left: 16px;
+  right: 16px;
+  height: 60px;
+  background: rgba(10, 13, 24, 0.75);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px; /* Complete pill curvature on all 4 corners */
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px;
+  z-index: 60;
+  box-shadow: 
+    0 16px 38px -4px rgba(0, 0, 0, 0.8),
+    0 0 24px rgba(99, 102, 241, 0.08);
+  transition: all 0.35s var(--ease-spring);
+}
+
+.orientation-landscape .bottom-nav-dock {
+  bottom: 16px;
+  left: 24%;
+  right: 24%;
+  height: 52px;
+  border-radius: 9999px;
+}
+
+/* Individual Tab Button */
+.bottom-nav-tab {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.50);
+  transition: all var(--duration-fast) var(--ease-spring);
+  padding: 4px 0;
+  position: relative;
+  user-select: none;
+}
+
+.bottom-nav-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.bottom-nav-tab:active {
+  transform: scale(0.92);
+}
+
+/* Tab Icon Container */
+.nav-tab-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+/* Tab Label */
+.nav-tab-label {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.orientation-landscape .nav-tab-label {
+  font-size: 9.5px;
+}
+
+/* Active State: Signature Obsidian Violet */
+.bottom-nav-tab.active {
+  color: #818cf8;
+}
+
+.bottom-nav-tab.active .nav-tab-icon-wrapper {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 0 8px rgba(99, 102, 241, 0.45));
+}
+
+.bottom-nav-tab.active .nav-tab-label {
+  font-weight: 600;
+  color: #818cf8;
+}
+
+/* --- Center Protruding Big Play Button --- */
+.bottom-nav-center-slot {
+  flex: 1.1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.center-big-play-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  position: relative;
+  top: -9px; /* Elevated dome protruding above the capsule dock */
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+
+.orientation-landscape .center-big-play-btn {
+  width: 44px;
+  height: 44px;
+  top: -7px;
+}
+
+.center-big-play-btn:hover {
+  transform: scale(1.06);
+}
+
+.center-big-play-btn:active {
+  transform: scale(0.93);
+}
+
+/* Outer Gradient Ring matching Player Transport */
+.play-btn-outer-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Inner Dome Background */
+.play-btn-inner-dome {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #0f111e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.play-btn-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 2px;
+}

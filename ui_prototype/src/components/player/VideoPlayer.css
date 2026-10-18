@@ -1,0 +1,83 @@
+/* ==========================================================================
+   PlayMe Video Tab Screen Viewport (Matching Reference Image)
+   ========================================================================== */
+
+.player-screen-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.4rem 10px 5.5rem 10px;
+  overflow-y: auto;
+  position: relative;
+  z-index: 20;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.player-screen-container::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.orientation-landscape .player-screen-container {
+  padding: 0.35rem 1.75rem 4.5rem 1.75rem;
+}
+
+/* Other Tab Preview Views (Music, Browse, Settings) */
+.tab-content-view {
+  border-radius: 20px;
+  padding: 1.5rem 1.25rem;
+  background: rgba(14, 16, 28, 0.55);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.85rem;
+  min-height: 220px;
+  margin-top: 1rem;
+}
+
+.tab-icon-large {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2));
+  border: 1px solid rgba(117, 123, 248, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #757bf8;
+  box-shadow: 0 0 20px rgba(117, 123, 248, 0.25);
+}
+
+.tab-content-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #ffffff;
+}
+
+.tab-content-desc {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.65);
+  max-width: 280px;
+  line-height: 1.45;
+}
+
+.tab-indicator-pill {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #a5b4fc;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

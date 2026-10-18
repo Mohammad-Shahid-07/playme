@@ -1,0 +1,152 @@
+/* ==========================================================================
+   SCREEN GESTURE SEEK HUD — COMPACT FLOATING PILL
+   ========================================================================== */
+
+.gesture-seek-surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gesture-seek-surface.is-active-drag {
+  cursor: grabbing;
+}
+
+/* Locked Alert Toast */
+.gesture-locked-toast {
+  position: absolute;
+  top: 4.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  background: rgba(15, 18, 30, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7);
+  border-radius: 9999px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fca5a5;
+  font-size: 11.5px;
+  font-weight: 600;
+  pointer-events: none;
+  animation: lockedToastPop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.gesture-locked-toast .material-symbols-rounded {
+  font-size: 15px;
+  line-height: 1;
+  color: #ef4444;
+}
+
+@keyframes lockedToastPop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* Minimal Floating Pill HUD */
+.gesture-seek-pill {
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 50;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  background: rgba(12, 15, 27, 0.88);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(99, 102, 241, 0.25);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  animation: seekPillEnter 0.14s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes seekPillEnter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -44%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.gesture-pill-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.gesture-pill-icon.is-forward {
+  color: #818cf8;
+}
+
+.gesture-pill-icon.is-backward {
+  color: #c084fc;
+}
+
+.gesture-pill-delta {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.gesture-pill-delta.delta-forward {
+  color: #a5b4fc;
+}
+
+.gesture-pill-delta.delta-backward {
+  color: #e9d5ff;
+}
+
+.gesture-pill-divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.gesture-pill-time-group {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.gesture-pill-target {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.gesture-pill-duration {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+}

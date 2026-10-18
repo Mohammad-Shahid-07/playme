@@ -1,0 +1,641 @@
+/* ==========================================================================
+   PORTRAIT VIDEO PLAYER — OBSIDIAN VIOLET LIQUID GLASS
+   Unified Design DNA matching Landscape Player & Main Menu
+   ========================================================================== */
+
+.unified-portrait-player-root {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #05060b;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 90;
+  user-select: none;
+  font-family: var(--font-sans, 'Plus Jakarta Sans', 'Outfit', sans-serif);
+}
+
+/* Glass surface utility */
+.player-glass-surface {
+  background: rgba(14, 17, 29, 0.82);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+}
+
+/* 1. TOP HUD BAR */
+.portrait-hud-top {
+  position: relative;
+  z-index: 30;
+  width: 100%;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.45) 60%, transparent 100%);
+  padding: 0.75rem 0.85rem 0.9rem 0.85rem;
+  pointer-events: auto;
+  flex-shrink: 0;
+}
+
+.portrait-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.portrait-title-col {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.portrait-back-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: rgba(14, 17, 29, 0.82);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portrait-back-btn .material-symbols-rounded {
+  font-size: 19px;
+}
+
+.portrait-back-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.portrait-back-btn:active {
+  transform: scale(0.92);
+}
+
+.portrait-title-meta-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.portrait-video-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.portrait-video-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 10.5px;
+  color: #94a3b8;
+  padding-top: 1px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.portrait-video-meta .meta-res-badge {
+  color: #a5b4fc;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.portrait-video-meta .meta-dot {
+  color: #475569;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.portrait-top-utility-capsule {
+  height: 34px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex-shrink: 0;
+  background: rgba(14, 17, 29, 0.82);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+.portrait-utility-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.88);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.portrait-utility-btn .material-symbols-rounded {
+  font-size: 17px;
+}
+
+.portrait-utility-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.portrait-utility-btn:active {
+  transform: scale(0.92);
+}
+
+/* 2. FULL-BLEED MOBILE VIDEO STAGE */
+.portrait-stage-area {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #05060b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.portrait-ambient-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.75;
+  transition: opacity 0.7s ease;
+}
+
+.portrait-glow-orb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 60%;
+  background: radial-gradient(ellipse at center, rgba(99, 102, 241, 0.28) 0%, rgba(139, 92, 246, 0.2) 45%, rgba(59, 130, 246, 0.1) 75%, transparent 100%);
+  filter: blur(80px);
+  border-radius: 50%;
+}
+
+.portrait-video-canvas {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  transition: object-fit 0.25s ease;
+}
+
+.portrait-video-canvas.fit-contain {
+  object-fit: contain;
+}
+
+.portrait-video-canvas.fit-cover {
+  object-fit: cover;
+}
+
+/* Scrims */
+.portrait-scrim-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 110px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.45) 60%, transparent 100%);
+  pointer-events: none;
+  z-index: 15;
+}
+
+.portrait-scrim-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 170px;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.7) 60%, transparent 100%);
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* LIVE ON-SCREEN SUBTITLE PILL */
+.portrait-subtitle-box {
+  position: absolute;
+  bottom: 7.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  width: 88%;
+  max-width: 350px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.portrait-subtitle-pill {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* 3. FLOATING VERTICAL ACTION DOCK (Single Sleek Liquid Glass Capsule) */
+.portrait-side-dock {
+  position: absolute;
+  right: 0.75rem;
+  top: 48%;
+  transform: translateY(-50%);
+  z-index: 30;
+  pointer-events: auto;
+}
+
+.portrait-side-capsule {
+  border-radius: 9999px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(14, 17, 29, 0.82);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+}
+
+.portrait-side-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.88);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.portrait-side-btn .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.portrait-side-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.portrait-side-btn:active {
+  transform: scale(0.92);
+}
+
+.portrait-side-btn.is-active {
+  color: #a5b4fc;
+  background: rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+}
+
+.portrait-side-btn-ab {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.portrait-side-divider {
+  width: 12px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 1px 0;
+}
+
+/* 4. BOTTOM HUD: UP NEXT STRIP + TIMELINE + DUAL CAPSULE TRANSPORT DECK */
+.portrait-hud-bottom {
+  position: relative;
+  z-index: 30;
+  width: 100%;
+  padding: 0.5rem 1rem 1.8rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  pointer-events: auto;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.6) 70%, transparent 100%);
+}
+
+/* Scrubber Row */
+.portrait-scrubber-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  position: relative;
+}
+
+.portrait-time-current {
+  font-size: 11px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-weight: 600;
+  color: #ffffff;
+  flex-shrink: 0;
+  min-width: 36px;
+}
+
+.portrait-time-remaining {
+  font-size: 11px;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-weight: 500;
+  color: #94a3b8;
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: right;
+}
+
+.portrait-seekbar-track-wrap {
+  flex: 1;
+  position: relative;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.portrait-seekbar-bg {
+  width: 100%;
+  height: 3.5px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+  transition: height 0.15s ease;
+}
+
+.portrait-seekbar-track-wrap:hover .portrait-seekbar-bg {
+  height: 5px;
+}
+
+.portrait-seekbar-buffer {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.25);
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.portrait-seekbar-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1 0%, #757bf8 50%, #a855f7 100%);
+  box-shadow: 0 0 10px rgba(117, 123, 248, 0.85);
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.portrait-seekbar-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(117, 123, 248, 1);
+  pointer-events: none;
+  transition: transform 0.12s ease;
+}
+
+.portrait-seekbar-track-wrap:hover .portrait-seekbar-thumb {
+  transform: translate(-50%, -50%) scale(1.25);
+}
+
+.portrait-seekbar-slider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+  z-index: 5;
+}
+
+/* Full-Width Balanced Bottom Controls Deck */
+.portrait-bottom-deck {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.25rem 0.25rem 0.5rem 0.25rem;
+}
+
+/* Left & Right Flanks (Symmetrical flex: 1 ensures Dead-Center Transport) */
+.portrait-deck-side {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.portrait-deck-left {
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.portrait-deck-right {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Speed Badge Pill */
+.portrait-speed-badge {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: #c7d2fe;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.portrait-speed-badge:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.portrait-speed-badge:active {
+  transform: scale(0.94);
+}
+
+/* Secondary Deck Icon Button */
+.portrait-deck-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.portrait-deck-btn .material-symbols-rounded {
+  font-size: 22px;
+}
+
+.portrait-deck-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.portrait-deck-btn:active {
+  transform: scale(0.92);
+}
+
+/* Center Transport Controls (Dead-Center) */
+.portrait-deck-center {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.portrait-transport-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.portrait-transport-btn .material-symbols-rounded {
+  font-size: 24px;
+}
+
+.portrait-transport-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.portrait-transport-btn:active {
+  transform: scale(0.92);
+}
+
+/* Hero Play/Pause Button */
+.portrait-hero-play-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #8b5cf6 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.7), 0 4px 14px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+.portrait-hero-play-btn .material-symbols-rounded {
+  font-size: 28px;
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+
+.portrait-hero-play-btn:hover {
+  filter: brightness(1.15);
+  transform: scale(1.06);
+  box-shadow: 0 0 26px rgba(99, 102, 241, 0.9), 0 6px 18px rgba(0, 0, 0, 0.6);
+}
+
+.portrait-hero-play-btn:active {
+  transform: scale(0.94);
+}
+
+/* Floating Toast */
+.portrait-toast-pill {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(14, 17, 29, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(117, 123, 248, 0.5);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+  color: #38bdf8;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  z-index: 100;
+  pointer-events: none;
+  animation: portraitToastIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+@keyframes portraitToastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

@@ -1,0 +1,27 @@
+# Gradle & Android build outputs
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+*.ap_
+
+# Local configuration
+local.properties
+.idea/
+.kotlin/
+*.iml
+
+# Node / Prototype
+ui_prototype/node_modules/
+ui_prototype/dist/
+ui_prototype/.vite/
+
+# Reference archives
+vlc-android-master/
+vlc-android-master.zip
+
+# System & OS
+.DS_Store
+Thumbs.db
+*.hprof

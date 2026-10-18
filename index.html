@@ -1,0 +1,2312 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlayMe Pro — Liquid Glass Media Player</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Material Symbols Rounded -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <!-- Typography: Outfit, Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Outfit"', '"Plus Jakarta Sans"', 'sans-serif'],
+            body: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .material-symbols-rounded {
+      font-family: 'Material Symbols Rounded';
+      font-weight: normal;
+      font-style: normal;
+      font-size: 22px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .material-symbols-rounded.filled {
+      font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
+    /* Clean Scrollbars */
+    ::-webkit-scrollbar { width: 0px; height: 0px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Atmospheric Ambient Animations */
+    @keyframes atmosphericPulse1 {
+      0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.45; }
+      50% { transform: scale(1.12) translate(15px, -15px); opacity: 0.7; }
+    }
+    @keyframes atmosphericPulse2 {
+      0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.4; }
+      50% { transform: scale(1.15) translate(-15px, 15px); opacity: 0.65; }
+    }
+    .glow-indigo { animation: atmosphericPulse1 12s ease-in-out infinite alternate; }
+    .glow-violet { animation: atmosphericPulse2 15s ease-in-out infinite alternate; }
+
+    /* ======================================================== */
+    /* LIQUID GLASS DESIGN SYSTEM                               */
+    /* ======================================================== */
+    .glass-surface {
+      background: rgba(20, 22, 36, 0.72);
+      backdrop-filter: blur(28px) saturate(190%);
+      -webkit-backdrop-filter: blur(28px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+    }
+
+    .glass-pill {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      color: rgba(255, 255, 255, 0.78);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .glass-pill:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .glass-pill-active {
+      background: linear-gradient(135deg, #6366f1, #7c3aed) !important;
+      color: #ffffff !important;
+      border: 1px solid rgba(255, 255, 255, 0.25) !important;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.45), 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+      font-weight: 600;
+    }
+
+    .hud-capsule {
+      background: rgba(11, 13, 22, 0.82);
+      backdrop-filter: blur(30px) saturate(190%);
+      -webkit-backdrop-filter: blur(30px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.85);
+    }
+
+    /* ======================================================== */
+    /* CONTAINER-DRIVEN ORIENTATION & RESPONSIVE SYSTEM         */
+    /* ======================================================== */
+    #device-container {
+      transition: width 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                  height 0.38s cubic-bezier(0.16, 1, 0.3, 1),
+                  border-radius 0.3s ease;
+    }
+    .phone-chassis-shadow {
+      box-shadow: 
+        0 35px 90px -20px rgba(0, 0, 0, 0.95),
+        0 0 0 1px rgba(255, 255, 255, 0.07),
+        0 0 60px -15px rgba(99, 102, 241, 0.15);
+    }
+
+    /* Library List vs Grid Modes */
+    .feed-list-mode {
+      display: flex;
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+    .feed-grid-mode {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem 0.75rem;
+    }
+    /* Automatic multi-column expansion when device is in Landscape or Fullscreen */
+    #device-container[data-orientation="landscape"] .feed-grid-mode,
+    #device-container[data-orientation="tablet"] .feed-grid-mode,
+    #device-container[data-frame="full"] .feed-grid-mode {
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 1.125rem 1rem;
+    }
+    #device-container[data-orientation="landscape"] .feed-list-mode,
+    #device-container[data-orientation="tablet"] .feed-list-mode,
+    #device-container[data-frame="full"] .feed-list-mode {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    /* Player Bottom Controls Adaptation based on container orientation */
+    #device-container[data-orientation="portrait"] #player-bottom-controls-wrapper {
+      flex-direction: column;
+      gap: 0.625rem;
+    }
+    #device-container[data-orientation="portrait"] .player-up-next-row {
+      width: 100%;
+      justify-content: space-between;
+    }
+    #device-container[data-orientation="landscape"] #player-bottom-controls-wrapper,
+    #device-container[data-orientation="tablet"] #player-bottom-controls-wrapper,
+    #device-container[data-frame="full"] #player-bottom-controls-wrapper {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+    #device-container[data-orientation="landscape"] .player-up-next-row,
+    #device-container[data-orientation="tablet"] .player-up-next-row,
+    #device-container[data-frame="full"] .player-up-next-row {
+      width: auto;
+      max-width: 280px;
+    }
+    #device-container[data-orientation="landscape"] .player-controls-row,
+    #device-container[data-orientation="tablet"] .player-controls-row,
+    #device-container[data-frame="full"] .player-controls-row {
+      flex: 1;
+      justify-content: flex-end;
+      gap: 0.875rem;
+    }
+
+    /* Equalizer Bars Animation */
+    @keyframes eqWave1 { 0%, 100% { height: 4px; } 50% { height: 15px; } }
+    @keyframes eqWave2 { 0%, 100% { height: 15px; } 50% { height: 5px; } }
+    @keyframes eqWave3 { 0%, 100% { height: 7px; } 50% { height: 17px; } }
+    .eq-bar-1 { animation: eqWave1 0.75s ease-in-out infinite; }
+    .eq-bar-2 { animation: eqWave2 0.65s ease-in-out infinite 0.15s; }
+    .eq-bar-3 { animation: eqWave3 0.85s ease-in-out infinite 0.3s; }
+
+    /* Custom Vertical Range Sliders for 5-Band EQ */
+    .eq-slider-wrapper {
+      position: relative;
+      height: 110px;
+      width: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .eq-slider-vertical {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100px;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      outline: none;
+      transform: rotate(-90deg);
+      cursor: pointer;
+    }
+    .eq-slider-vertical::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #818cf8;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.8);
+      cursor: grab;
+    }
+
+    /* Drag & Drop Feedback */
+    .queue-card.dragging {
+      opacity: 0.4 !important;
+      transform: scale(0.97) !important;
+      border-color: #818cf8 !important;
+    }
+    .queue-card.drag-over-top { border-top: 2px solid #818cf8 !important; }
+    .queue-card.drag-over-bottom { border-bottom: 2px solid #818cf8 !important; }
+  </style>
+</head>
+
+<body class="bg-[#06070b] text-zinc-100 font-sans min-h-screen flex flex-col items-center select-none antialiased overflow-x-hidden">
+
+  <!-- ================= TOP WORKBENCH TOOLBAR ================= -->
+  <header id="workbench-header" class="w-full bg-[#0b0d15]/90 backdrop-blur-2xl px-4 lg:px-6 py-2.5 sticky top-0 z-50 flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.07]">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6366f1] via-[#757bf8] to-[#a855f7] text-white flex items-center justify-center shadow-[0_0_18px_rgba(117,123,248,0.45)]">
+        <i data-lucide="play" class="w-4 h-4 fill-white ml-0.5"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm font-bold tracking-tight text-white">PlayMe Studio</h1>
+          <span class="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-semibold">
+            v2.4 Pro UI
+          </span>
+        </div>
+        <p class="text-[11px] text-zinc-400 hidden sm:block">Interactive Liquid Glass Media Player & Library</p>
+      </div>
+    </div>
+
+    <!-- Viewport & Screen Switcher -->
+    <div class="flex items-center bg-white/[0.04] border border-white/[0.07] p-1 rounded-full text-xs font-medium gap-1 overflow-x-auto no-scrollbar max-w-full">
+      <button onclick="setView('library')" id="btn-view-library" class="px-3 py-1.5 rounded-full glass-pill-active transition flex items-center gap-1.5 shrink-0">
+        <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+        <span>Library</span>
+      </button>
+      <button onclick="setView('library-landscape')" id="btn-view-library-landscape" class="px-3 py-1.5 rounded-full text-zinc-300 hover:text-white transition flex items-center gap-1.5 shrink-0">
+        <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+        <span>Lib Wide</span>
+      </button>
+      <button onclick="setView('player-portrait')" id="btn-view-player-portrait" class="px-3 py-1.5 rounded-full text-zinc-300 hover:text-white transition flex items-center gap-1.5 shrink-0">
+        <i data-lucide="play-circle" class="w-3.5 h-3.5"></i>
+        <span>Player Portrait</span>
+      </button>
+      <button onclick="setView('player-landscape')" id="btn-view-player-landscape" class="px-3 py-1.5 rounded-full text-zinc-300 hover:text-white transition flex items-center gap-1.5 shrink-0">
+        <i data-lucide="tv" class="w-3.5 h-3.5"></i>
+        <span>Player 19.5:9</span>
+      </button>
+      <button onclick="setView('player-tablet')" id="btn-view-player-tablet" class="px-3 py-1.5 rounded-full text-zinc-300 hover:text-white transition flex items-center gap-1.5 shrink-0">
+        <i data-lucide="tablet" class="w-3.5 h-3.5"></i>
+        <span>Tablet 16:9</span>
+      </button>
+    </div>
+
+    <!-- Right Workbench Utilities -->
+    <div class="flex items-center gap-2 text-xs">
+      <button onclick="toggleQueueDrawer()" class="px-3 py-1.5 rounded-full glass-pill flex items-center gap-1.5 text-indigo-300" title="Open Up Next Queue">
+        <span class="material-symbols-rounded text-[16px]">queue_music</span>
+        <span class="hidden md:inline">Queue</span>
+      </button>
+      <button onclick="toggleFullAppMode()" id="btn-toggle-frame" class="px-3 py-1.5 rounded-full glass-pill flex items-center gap-1.5" title="Toggle Full Responsive Web App vs Device Frame">
+        <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+        <span id="frame-toggle-label">Full App</span>
+      </button>
+      <span id="current-viewport-res" class="text-[11px] font-mono text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 px-2.5 py-1 rounded-full hidden xl:inline-block">
+        390 × 844
+      </span>
+    </div>
+  </header>
+
+  <!-- ================= MAIN VIEWPORT STAGE ================= -->
+  <main id="main-stage" class="w-full flex-1 flex items-center justify-center p-2 sm:p-6 overflow-hidden">
+    
+    <!-- Device / App Container -->
+    <div id="device-container" 
+         data-orientation="portrait" 
+         data-frame="mockup"
+         class="phone-chassis-shadow relative w-[390px] h-[844px] max-w-full bg-[#0b0d16] rounded-[50px] overflow-hidden border-[6px] border-[#1a1d2e] flex flex-col">
+
+      <!-- ================= GLOBAL TOAST NOTIFICATION ================= -->
+      <div id="toast-notification" class="absolute top-12 left-1/2 -translate-x-1/2 z-[90] px-4 py-2 rounded-full bg-[#131626]/95 backdrop-blur-2xl border border-indigo-500/40 text-white shadow-[0_10px_30px_rgba(0,0,0,0.8)] flex items-center gap-2 text-xs font-medium transition-all duration-300 opacity-0 -translate-y-3 pointer-events-none">
+        <span id="toast-icon" class="material-symbols-rounded text-[17px] text-indigo-400">check_circle</span>
+        <span id="toast-message">Action completed</span>
+      </div>
+
+      <!-- ================= ATMOSPHERIC NEON AMBIENT MESH ================= -->
+      <div class="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="glow-indigo absolute -top-20 -left-16 w-80 h-80 rounded-full bg-gradient-to-br from-[#6366f1]/25 via-[#757bf8]/15 to-transparent blur-[70px]"></div>
+        <div class="glow-violet absolute top-1/3 -right-20 w-96 h-96 rounded-full bg-gradient-to-bl from-[#8b5cf6]/20 via-[#a855f7]/10 to-transparent blur-[80px]"></div>
+        <div class="absolute -bottom-20 -left-12 w-80 h-80 rounded-full bg-gradient-to-tr from-[#3b82f6]/15 via-[#6366f1]/10 to-transparent blur-[70px]"></div>
+      </div>
+
+      <!-- Dynamic Island Cutout -->
+      <div id="device-island" class="absolute top-2 left-1/2 -translate-x-1/2 w-28 h-6 bg-black rounded-full z-40 flex items-center justify-end px-2.5 gap-1.5 shadow-md pointer-events-none">
+        <div class="w-2 h-2 rounded-full bg-[#151828]"></div>
+        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500/60"></div>
+      </div>
+
+      <!-- Device Status Bar -->
+      <div id="device-status-bar" class="w-full h-10 px-6 flex items-center justify-between text-[12px] font-semibold text-zinc-100 z-30 select-none shrink-0 pt-1 relative">
+        <span class="font-medium tracking-tight">9:41</span>
+        <div class="flex items-center gap-1.5 text-zinc-200">
+          <i data-lucide="signal" class="w-3.5 h-3.5"></i>
+          <span class="text-[10px] font-mono font-bold">5G</span>
+          <i data-lucide="wifi" class="w-3.5 h-3.5"></i>
+          <div class="w-5 h-2.5 rounded-[3px] border border-white/40 p-0.5 flex items-center">
+            <div class="h-full w-3.5 bg-white rounded-[1px]"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- SCREEN 1: MEDIA LIBRARY                                   -->
+      <!-- ========================================================= -->
+      <div id="screen-library" class="flex-1 flex flex-col h-full overflow-hidden relative z-10">
+        
+        <!-- Top Brand & Utility Bar -->
+        <header class="px-5 pt-2 pb-2 shrink-0 z-20">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6366f1] to-[#a855f7] flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                <i data-lucide="play" class="w-4 h-4 fill-white text-white ml-0.5"></i>
+              </div>
+              <h2 class="text-xl font-extrabold text-white tracking-tight">
+                Play<span class="bg-gradient-to-r from-[#818cf8] to-[#c084fc] bg-clip-text text-transparent">Me</span>
+              </h2>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button onclick="toggleSearchInput()" id="btn-search-toggle" 
+                      class="w-9 h-9 rounded-full glass-pill flex items-center justify-center active:scale-95" 
+                      title="Search Library">
+                <i data-lucide="search" class="w-4 h-4"></i>
+              </button>
+              <button onclick="openModal('modal-import')" 
+                      class="h-9 px-3.5 rounded-full glass-pill flex items-center gap-1.5 text-xs font-semibold active:scale-95" 
+                      title="Import Video or Stream URL">
+                <i data-lucide="plus" class="w-4 h-4 text-indigo-400"></i>
+                <span>Import</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Expandable Live Search Capsule -->
+          <div id="search-bar-container" class="hidden transition-all duration-300 pt-2.5">
+            <div class="bg-[#141726]/90 backdrop-blur-2xl border border-indigo-500/30 rounded-2xl flex items-center px-3.5 py-2.5 shadow-[0_0_25px_rgba(99,102,241,0.15)]">
+              <i data-lucide="search" class="w-4 h-4 text-indigo-400 mr-2.5 shrink-0"></i>
+              <input type="text" id="offline-search-input" placeholder="Search titles, 4K, HEVC, folders..." 
+                     class="w-full bg-transparent text-xs text-white placeholder-zinc-500 focus:outline-none"
+                     oninput="handleSearch(this.value)">
+              <button onclick="clearSearch()" id="btn-clear-search" class="hidden text-zinc-400 hover:text-white ml-1.5">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <!-- Library Scrollable Area -->
+        <div id="library-content-scroll" class="flex-1 overflow-y-auto px-5 pb-28 space-y-4 pt-1 no-scrollbar">
+          
+          <!-- 1. CONTINUE WATCHING (HISTORY CAROUSEL) -->
+          <section id="section-history" class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-zinc-300">Continue Watching</span>
+                <span id="history-count-pill" class="text-[10px] font-mono text-indigo-300 px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/25 font-semibold">4</span>
+              </div>
+              <button onclick="clearHistory()" class="text-[11px] text-zinc-400 hover:text-indigo-300 font-medium transition">
+                Clear all
+              </button>
+            </div>
+
+            <div id="history-carousel" class="flex gap-3 overflow-x-auto no-scrollbar py-0.5 -mx-1 px-1">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </section>
+
+          <!-- 2. SUB-NAVIGATION & FILTER CONTROLS -->
+          <div class="space-y-2.5 pt-1">
+            <div class="flex items-center justify-between">
+              <!-- Tabs: Videos vs Folders -->
+              <div class="flex items-center gap-6">
+                <button onclick="switchMediaTab('video')" id="tab-subnav-video" class="text-base font-bold text-white relative pb-1.5 transition flex flex-col items-start cursor-pointer">
+                  <div class="flex items-center gap-1.5">
+                    <span>Videos</span>
+                    <span id="total-video-count" class="text-[11px] font-mono text-indigo-300 bg-indigo-500/15 px-1.5 py-0.2 rounded-md">6</span>
+                  </div>
+                  <span id="tab-indicator-video" class="w-full h-[3px] bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-full shadow-[0_0_10px_rgba(117,123,248,0.8)] mt-1"></span>
+                </button>
+                <button onclick="switchMediaTab('folder')" id="tab-subnav-folder" class="text-base font-medium text-zinc-500 hover:text-zinc-200 relative pb-1.5 transition flex flex-col items-start cursor-pointer">
+                  <div class="flex items-center gap-1.5">
+                    <span>Folders</span>
+                    <span class="text-[11px] font-mono text-zinc-500 bg-white/[0.04] px-1.5 py-0.2 rounded-md">4</span>
+                  </div>
+                  <span id="tab-indicator-folder" class="w-full h-[3px] bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-full shadow-[0_0_10px_rgba(117,123,248,0.8)] mt-1 hidden"></span>
+                </button>
+              </div>
+
+              <!-- Sort & Grid/List Toggles -->
+              <div class="flex items-center gap-2">
+                <button onclick="openModal('sheet-sort')" class="h-8 px-3 rounded-full glass-pill text-xs flex items-center gap-1.5 active:scale-95" title="Sort Videos">
+                  <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-indigo-400"></i>
+                  <span id="active-sort-label" class="text-[11px] font-medium">Recent</span>
+                </button>
+                <button onclick="toggleLayoutMode()" id="btn-layout-toggle" class="w-8 h-8 rounded-full glass-pill flex items-center justify-center active:scale-95" title="Switch List / Grid View">
+                  <i data-lucide="layout-grid" id="icon-layout-mode" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Quick Filter Chips -->
+            <div id="video-filter-chips" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+              <button onclick="setCategoryFilter('all', this)" class="filter-chip px-3 py-1 rounded-full glass-pill-active text-[11px] shrink-0">All Media</button>
+              <button onclick="setCategoryFilter('4K', this)" class="filter-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0">4K HDR</button>
+              <button onclick="setCategoryFilter('1080p', this)" class="filter-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0">1080p HD</button>
+              <button onclick="setCategoryFilter('HEVC', this)" class="filter-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0">HEVC / MKV</button>
+            </div>
+          </div>
+
+          <!-- 3. DYNAMIC VIDEO FEED VIEW -->
+          <div id="view-container-videos" class="space-y-4">
+            <div id="video-feed-container" class="feed-list-mode">
+              <!-- Populated dynamically via JS renderLibrary() -->
+            </div>
+          </div>
+
+          <!-- 4. FOLDERS & DRILL-DOWN VIEW -->
+          <div id="view-container-folders" class="space-y-3 hidden">
+            <!-- Folder Root List -->
+            <div id="folders-root-list" class="space-y-2">
+              <!-- Populated dynamically via JS -->
+            </div>
+
+            <!-- Folder Drill-Down Inside View -->
+            <div id="folder-drilldown-view" class="space-y-3 hidden">
+              <div class="flex items-center justify-between p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.07]">
+                <button onclick="closeFolderDrilldown()" class="flex items-center gap-1.5 text-xs font-semibold text-indigo-300 hover:text-white transition">
+                  <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                  <span>All Folders</span>
+                </button>
+                <span id="drilldown-folder-title" class="text-xs font-bold text-white">Camera Roll</span>
+                <span id="drilldown-folder-count" class="text-[10px] font-mono text-zinc-400">3 items</span>
+              </div>
+              <div id="folder-drilldown-items" class="feed-list-mode"></div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ================= MINI FLOATING NOW-PLAYING BAR ================= -->
+        <div id="mini-player-bar" class="hidden absolute bottom-[68px] inset-x-3 z-30 p-2 rounded-2xl bg-[#141728]/95 backdrop-blur-2xl border border-indigo-500/30 shadow-[0_12px_30px_rgba(0,0,0,0.85)] flex items-center justify-between gap-2.5">
+          <div onclick="resumeFromMiniPlayer()" class="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer">
+            <div class="relative w-12 h-8 rounded-lg overflow-hidden shrink-0 bg-black">
+              <img id="mini-player-thumb" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=200&auto=format&fit=crop&q=80" class="w-full h-full object-cover" alt="Mini Thumb">
+              <div class="absolute bottom-0 inset-x-0 h-[2.5px] bg-white/20">
+                <div id="mini-player-progress" class="h-full bg-indigo-400" style="width: 65%;"></div>
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <h5 id="mini-player-title" class="text-xs font-bold text-white truncate">Avengers: Infinity War</h5>
+              <p class="text-[10px] text-indigo-300 font-mono truncate">Tap to return to fullscreen</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button onclick="togglePlayPause()" class="w-8 h-8 rounded-full bg-indigo-500/20 hover:bg-indigo-500/30 text-white flex items-center justify-center">
+              <span id="mini-player-play-icon" class="material-symbols-rounded text-[18px] filled">pause</span>
+            </button>
+            <button onclick="dismissMiniPlayer()" class="w-7 h-7 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= BOTTOM NAVIGATION BAR ================= -->
+        <nav id="bottom-nav-bar" class="absolute bottom-0 inset-x-0 z-30 bg-[#0b0d17]/90 backdrop-blur-2xl border-t border-white/[0.07] pt-2 pb-2.5 px-4 shadow-[0_-10px_30px_rgba(0,0,0,0.7)]">
+          <div class="grid grid-cols-4 items-center max-w-[380px] mx-auto">
+            <button onclick="setActiveBottomTab('home')" id="tab-btn-home" class="flex flex-col items-center justify-center py-0.5 group">
+              <span id="tab-icon-home" class="material-symbols-rounded text-[22px] filled text-[#818cf8] drop-shadow-[0_0_8px_rgba(129,140,248,0.6)]">home</span>
+              <span id="tab-label-home" class="text-[10.5px] font-semibold text-white mt-0.5">Home</span>
+            </button>
+
+            <button onclick="setActiveBottomTab('search')" id="tab-btn-search" class="flex flex-col items-center justify-center py-0.5 group">
+              <span id="tab-icon-search" class="material-symbols-rounded text-[22px] text-zinc-400 group-hover:text-zinc-200">search</span>
+              <span id="tab-label-search" class="text-[10.5px] font-normal text-zinc-400 group-hover:text-zinc-200 mt-0.5">Search</span>
+            </button>
+
+            <button onclick="setActiveBottomTab('library')" id="tab-btn-library" class="flex flex-col items-center justify-center py-0.5 group">
+              <span id="tab-icon-library" class="material-symbols-rounded text-[22px] text-zinc-400 group-hover:text-zinc-200">folder_open</span>
+              <span id="tab-label-library" class="text-[10.5px] font-normal text-zinc-400 group-hover:text-zinc-200 mt-0.5">Folders</span>
+            </button>
+
+            <button onclick="setActiveBottomTab('profile')" id="tab-btn-profile" class="flex flex-col items-center justify-center py-0.5 group">
+              <span id="tab-icon-profile" class="material-symbols-rounded text-[22px] text-zinc-400 group-hover:text-zinc-200">person</span>
+              <span id="tab-label-profile" class="text-[10.5px] font-normal text-zinc-400 group-hover:text-zinc-200 mt-0.5">Profile</span>
+            </button>
+          </div>
+        </nav>
+
+        <!-- ================= LIBRARY BOTTOM SHEETS & MODALS ================= -->
+
+        <!-- 1. SORT SHEET -->
+        <div id="sheet-sort" class="hidden absolute inset-0 z-50 bg-black/65 backdrop-blur-sm flex flex-col justify-end">
+          <div onclick="closeModal('sheet-sort')" class="flex-1"></div>
+          <div class="bg-[#101322]/95 backdrop-blur-2xl border-t border-white/[0.1] rounded-t-[32px] p-5 space-y-4 shadow-2xl">
+            <div class="w-10 h-1 bg-white/20 rounded-full mx-auto -mt-1"></div>
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-white">Sort Media By</h4>
+              <button onclick="closeModal('sheet-sort')" class="w-7 h-7 rounded-full bg-white/[0.08] text-zinc-400 hover:text-white flex items-center justify-center">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <div class="space-y-1.5 text-xs">
+              <button onclick="applySort('recent', 'Recent')" class="sort-option w-full p-3 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-white font-semibold flex items-center justify-between">
+                <span class="flex items-center gap-2.5"><i data-lucide="clock" class="w-4 h-4 text-indigo-400"></i> Date Added (Newest First)</span>
+                <i data-lucide="check" class="w-4 h-4 text-indigo-400"></i>
+              </button>
+              <button onclick="applySort('name', 'Name A-Z')" class="sort-option w-full p-3 rounded-2xl hover:bg-white/[0.05] text-zinc-300 flex items-center justify-between">
+                <span class="flex items-center gap-2.5"><i data-lucide="arrow-down-a-z" class="w-4 h-4 text-zinc-400"></i> Title (A to Z)</span>
+              </button>
+              <button onclick="applySort('size', 'Size')" class="sort-option w-full p-3 rounded-2xl hover:bg-white/[0.05] text-zinc-300 flex items-center justify-between">
+                <span class="flex items-center gap-2.5"><i data-lucide="hard-drive" class="w-4 h-4 text-zinc-400"></i> File Size (Largest First)</span>
+              </button>
+              <button onclick="applySort('duration', 'Length')" class="sort-option w-full p-3 rounded-2xl hover:bg-white/[0.05] text-zinc-300 flex items-center justify-between">
+                <span class="flex items-center gap-2.5"><i data-lucide="timer" class="w-4 h-4 text-zinc-400"></i> Duration (Longest First)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. VIDEO 3-DOT CONTEXT ACTION SHEET -->
+        <div id="sheet-video-actions" class="hidden absolute inset-0 z-50 bg-black/65 backdrop-blur-sm flex flex-col justify-end">
+          <div onclick="closeModal('sheet-video-actions')" class="flex-1"></div>
+          <div class="bg-[#101322]/95 backdrop-blur-2xl border-t border-white/[0.1] rounded-t-[32px] p-5 space-y-4 shadow-2xl">
+            <div class="w-10 h-1 bg-white/20 rounded-full mx-auto -mt-1"></div>
+            <div class="flex items-center gap-3 pb-3 border-b border-white/[0.08]">
+              <img id="action-sheet-thumb" src="" class="w-14 h-10 rounded-xl object-cover bg-zinc-900 shrink-0" alt="">
+              <div class="min-w-0 flex-1">
+                <h4 id="action-sheet-title" class="text-sm font-bold text-white truncate">Video Title</h4>
+                <p id="action-sheet-meta" class="text-[11px] text-zinc-400 font-mono">1080p • 485 MB • MP4</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 gap-1 text-xs">
+              <button onclick="contextActionPlayNow()" class="p-3 rounded-2xl hover:bg-white/[0.06] text-white font-medium flex items-center gap-3">
+                <span class="material-symbols-rounded text-[20px] text-indigo-400">play_circle</span>
+                <span>Play Now</span>
+              </button>
+              <button onclick="contextActionAddToQueue()" class="p-3 rounded-2xl hover:bg-white/[0.06] text-zinc-200 flex items-center gap-3">
+                <span class="material-symbols-rounded text-[20px] text-indigo-400">queue_music</span>
+                <span>Add to Up Next Queue</span>
+              </button>
+              <button onclick="contextActionShowInfo()" class="p-3 rounded-2xl hover:bg-white/[0.06] text-zinc-200 flex items-center gap-3">
+                <span class="material-symbols-rounded text-[20px] text-zinc-400">info</span>
+                <span>Media Codec & File Properties</span>
+              </button>
+              <button onclick="contextActionDelete()" class="p-3 rounded-2xl hover:bg-red-500/15 text-red-400 flex items-center gap-3">
+                <span class="material-symbols-rounded text-[20px]">delete</span>
+                <span>Remove from Library</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. IMPORT MEDIA & NETWORK STREAM MODAL -->
+        <div id="modal-import" class="hidden absolute inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div class="w-full max-w-sm bg-[#101322] border border-white/[0.12] rounded-3xl p-5 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+              <h4 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="folder-plus" class="w-4 h-4 text-indigo-400"></i>
+                <span>Import Media</span>
+              </h4>
+              <button onclick="closeModal('modal-import')" class="w-7 h-7 rounded-full bg-white/[0.08] text-zinc-400 hover:text-white flex items-center justify-center">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <!-- Simulated Local File Dropzone -->
+            <div onclick="simulateFileImport()" class="cursor-pointer border-2 border-dashed border-indigo-500/35 hover:border-indigo-400 bg-indigo-500/[0.05] rounded-2xl p-5 text-center space-y-2 transition">
+              <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center mx-auto">
+                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+              </div>
+              <div class="text-xs font-semibold text-white">Tap to browse device files</div>
+              <p class="text-[10px] text-zinc-400">Supports MKV, MP4, MOV, AVI, FLAC & SRT</p>
+            </div>
+
+            <!-- Network Stream URL -->
+            <div class="space-y-1.5">
+              <label class="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Or Direct Network Stream (HTTP / HLS / Magnet)</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="stream-url-input" placeholder="https://example.com/stream.m3u8" class="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500">
+                <button onclick="playNetworkStream()" class="px-3.5 py-2 rounded-xl glass-pill-active text-xs font-semibold shrink-0">Play</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. PROFILE & STORAGE SHEET -->
+        <div id="sheet-profile" class="hidden absolute inset-0 z-50 bg-black/65 backdrop-blur-md flex flex-col justify-end">
+          <div onclick="closeProfileSheet()" class="flex-1"></div>
+          <div class="bg-[#0e101d]/95 backdrop-blur-2xl border-t border-white/[0.1] rounded-t-[34px] p-6 space-y-4 shadow-2xl">
+            <div class="w-10 h-1 bg-white/20 rounded-full mx-auto -mt-2"></div>
+            <div class="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-[#6366f1] to-[#a855f7] flex items-center justify-center font-bold text-white shadow-lg">
+                  AM
+                </div>
+                <div>
+                  <h4 class="text-sm font-bold text-white">Alex Mitchell</h4>
+                  <p class="text-[11px] text-indigo-300">PlayMe Offline Pro • Hardware Engine v4</p>
+                </div>
+              </div>
+              <button onclick="closeProfileSheet()" class="w-8 h-8 rounded-full bg-white/[0.08] text-zinc-300 hover:text-white flex items-center justify-center">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] space-y-2">
+              <div class="flex justify-between text-xs">
+                <span class="text-zinc-300 font-medium">Local Media Storage</span>
+                <span class="text-indigo-300 font-mono font-bold">6.3 GB / 128 GB</span>
+              </div>
+              <div class="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-[#6366f1] to-[#a855f7] rounded-full" style="width: 18%;"></div>
+              </div>
+            </div>
+
+            <div class="space-y-1.5 text-xs">
+              <div class="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04]">
+                <span class="text-zinc-300">Default Decoder</span>
+                <span class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono font-semibold text-[10px]">HW+ 10-bit</span>
+              </div>
+              <div class="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04]">
+                <span class="text-zinc-300">Background Picture-in-Picture</span>
+                <span class="text-emerald-400 font-medium">Always On</span>
+              </div>
+            </div>
+
+            <button onclick="closeProfileSheet()" class="w-full py-3 rounded-full glass-pill-active text-xs font-semibold">
+              Done
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+
+      <!-- ========================================================= -->
+      <!-- SCREEN 2: VIDEO PLAYER & HUD                              -->
+      <!-- ========================================================= -->
+      <div id="screen-player" class="flex-1 flex flex-col h-full bg-black overflow-hidden relative hidden select-none">
+        
+        <!-- Simulated Video Canvas -->
+        <div class="absolute inset-0 z-0 bg-black flex items-center justify-center overflow-hidden">
+          <img id="player-bg-image" src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1600&auto=format&fit=crop&q=80" 
+               alt="Video Frame" class="w-full h-full object-cover transition-all duration-300">
+          <!-- Simulated Live Subtitle Caption Banner -->
+          <div id="live-subtitle-caption" class="hidden absolute bottom-24 left-1/2 -translate-x-1/2 z-20 px-4 py-1.5 rounded-xl bg-black/75 backdrop-blur-md border border-white/10 text-white text-xs sm:text-sm font-medium text-center shadow-lg pointer-events-none max-w-[85%]">
+            "We're in the endgame now. Synchronizing orbital telemetry..."
+          </div>
+        </div>
+
+        <!-- Tap & Double-Tap Gesture Surface -->
+        <div onclick="togglePlayerHUD(event)" class="absolute inset-0 z-10 cursor-pointer flex">
+          <div class="w-1/3 h-full" ondblclick="triggerDoubleTapSeek(-10, 'left')" onclick="handleGestureClick('brightness', event)"></div>
+          <div class="w-1/3 h-full" ondblclick="togglePlayPause()"></div>
+          <div class="w-1/3 h-full" ondblclick="triggerDoubleTapSeek(10, 'right')" onclick="handleGestureClick('volume', event)"></div>
+        </div>
+
+        <!-- Double-Tap Ripple Indicators -->
+        <div id="ripple-seek-left" class="absolute left-8 top-1/2 -translate-y-1/2 z-30 px-4 py-3 rounded-2xl bg-black/70 backdrop-blur-xl border border-white/15 text-white flex flex-col items-center gap-1 opacity-0 scale-90 transition-all duration-200 pointer-events-none">
+          <span class="material-symbols-rounded text-[26px] text-indigo-400">replay_10</span>
+          <span class="text-[11px] font-mono font-bold">-10s</span>
+        </div>
+        <div id="ripple-seek-right" class="absolute right-8 top-1/2 -translate-y-1/2 z-30 px-4 py-3 rounded-2xl bg-black/70 backdrop-blur-xl border border-white/15 text-white flex flex-col items-center gap-1 opacity-0 scale-90 transition-all duration-200 pointer-events-none">
+          <span class="material-symbols-rounded text-[26px] text-indigo-400">forward_10</span>
+          <span class="text-[11px] font-mono font-bold">+10s</span>
+        </div>
+
+        <!-- Floating Screen Unlock Pill (Only when locked) -->
+        <button onclick="toggleScreenLock()" id="btn-floating-unlock" class="hidden absolute top-6 left-6 z-40 px-4 py-2 rounded-full bg-[#121524]/90 backdrop-blur-xl border border-indigo-500/40 text-white flex items-center gap-2 text-xs font-semibold shadow-2xl active:scale-95 transition">
+          <span class="material-symbols-rounded text-[18px] text-indigo-400">lock</span>
+          <span>Screen Locked • Tap to Unlock</span>
+        </button>
+
+        <!-- Left Gesture HUD: Brightness -->
+        <div id="gesture-brightness" class="absolute left-6 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-2 bg-[#111320]/90 backdrop-blur-xl border border-white/10 p-2.5 rounded-2xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none">
+          <span class="material-symbols-rounded text-[19px] text-amber-300">light_mode</span>
+          <div class="w-1.5 h-20 bg-white/15 rounded-full overflow-hidden flex flex-col justify-end">
+            <div id="brightness-bar" class="w-full bg-amber-300 rounded-full transition-all" style="height: 75%;"></div>
+          </div>
+          <span id="brightness-text" class="text-[10px] text-white font-mono font-bold">75%</span>
+        </div>
+
+        <!-- Right Gesture HUD: Volume -->
+        <div id="gesture-volume" class="absolute right-16 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-2 bg-[#111320]/90 backdrop-blur-xl border border-white/10 p-2.5 rounded-2xl shadow-2xl transition-all duration-300 opacity-0 pointer-events-none">
+          <span class="material-symbols-rounded text-[19px] text-indigo-400">volume_up</span>
+          <div class="w-1.5 h-20 bg-white/15 rounded-full overflow-hidden flex flex-col justify-end">
+            <div id="volume-bar" class="w-full bg-indigo-400 rounded-full transition-all" style="height: 75%;"></div>
+          </div>
+          <span id="volume-text" class="text-[10px] text-white font-mono font-bold">75%</span>
+        </div>
+
+        <!-- Hold-to-2X Speed Badge -->
+        <div id="badge-fastplay" class="absolute top-14 left-1/2 -translate-x-1/2 z-30 px-4 py-1.5 rounded-full bg-[#0e101c]/90 backdrop-blur-2xl border border-indigo-500/40 text-white flex items-center gap-1.5 shadow-[0_0_25px_rgba(99,102,241,0.5)] transition-all duration-200 opacity-0 scale-90 pointer-events-none">
+          <span class="material-symbols-rounded text-[18px] text-indigo-400 animate-pulse">fast_forward</span>
+          <span class="text-[11px] font-bold font-mono tracking-wider">2.0x FAST PLAY</span>
+        </div>
+
+        <!-- Technical Nerd Stats Floating HUD -->
+        <div id="overlay-nerd-stats" class="hidden absolute top-16 left-5 z-30 p-3.5 rounded-2xl bg-[#0b0d17]/90 backdrop-blur-2xl border border-white/15 text-white shadow-2xl font-mono text-[10px] space-y-1 pointer-events-auto w-60">
+          <div class="flex items-center justify-between border-b border-white/10 pb-1.5 mb-1">
+            <span class="text-[11px] font-bold text-indigo-300 flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              Real-Time Stream Telemetry
+            </span>
+            <button onclick="toggleNerdStats()" class="text-zinc-400 hover:text-white">✕</button>
+          </div>
+          <div class="flex justify-between text-zinc-400"><span>Video Out:</span><span class="text-white font-semibold">3840×2160 (HEVC 10b)</span></div>
+          <div class="flex justify-between text-zinc-400"><span>Decoder:</span><span id="stats-decoder" class="text-emerald-400 font-semibold">Hardware (MediaCodec)</span></div>
+          <div class="flex justify-between text-zinc-400"><span>Bitrate / FPS:</span><span class="text-white">24.8 Mbps • 59.94 fps</span></div>
+          <div class="flex justify-between text-zinc-400"><span>Dropped Frames:</span><span class="text-emerald-400">0 / 18,492</span></div>
+          <div class="flex justify-between text-zinc-400"><span>Audio Track:</span><span class="text-white">Dolby AC3 5.1 (48kHz)</span></div>
+        </div>
+
+        <!-- ================= MAIN PLAYER HUD OVERLAY ================= -->
+        <div id="player-hud-overlay" class="absolute inset-0 z-20 pointer-events-none transition-opacity duration-300 flex flex-col justify-between">
+          
+          <!-- 1. TOP BAR -->
+          <div class="w-full bg-gradient-to-b from-black/90 via-black/45 to-transparent pt-3 pb-6 px-4 sm:px-6 pointer-events-auto">
+            <div class="flex items-center justify-between gap-2 w-full">
+              
+              <!-- Back + Video Title & Specs -->
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <button onclick="closeVideoPlayer()" 
+                        class="w-9 h-9 rounded-full hud-capsule hover:bg-white/15 flex items-center justify-center text-white active:scale-90 transition shrink-0" 
+                        title="Back to Library (Minimizes to Mini-Player)">
+                  <span class="material-symbols-rounded text-[21px]">arrow_back</span>
+                </button>
+                
+                <div class="flex flex-col min-w-0 flex-1">
+                  <h3 id="player-title" class="text-sm font-bold text-white tracking-tight truncate leading-tight">
+                    Avengers: Infinity War
+                  </h3>
+                  <div class="flex items-center gap-1.5 text-[10.5px] text-zinc-300 font-mono pt-0.5">
+                    <span id="player-meta-duration">2h 29m</span>
+                    <span class="text-zinc-600">•</span>
+                    <span id="player-meta-res" class="px-1.5 py-0.2 rounded bg-indigo-500/25 border border-indigo-400/30 text-indigo-200 text-[9px] font-bold">4K HDR</span>
+                    <button onclick="toggleDecoderMode()" id="decoder-label" 
+                            class="px-1.5 py-0.2 rounded bg-white/10 border border-white/20 text-[9px] font-bold text-white hover:bg-indigo-500/30 transition" 
+                            title="Switch Hardware / Software Decoder">
+                      HW+
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top Right Quick Action Pill (Cast, CC, Audio, Settings) -->
+              <div class="h-9 px-1.5 rounded-full hud-capsule flex items-center gap-0.5 shrink-0 text-white">
+                <button onclick="openModal('modal-cast')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center active:scale-90 transition" title="Cast / AirPlay">
+                  <span class="material-symbols-rounded text-[19px]">cast</span>
+                </button>
+                <button onclick="openPlayerSidebar('subtitles')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center active:scale-90 transition" title="Subtitles & CC">
+                  <span class="material-symbols-rounded text-[19px]">closed_caption</span>
+                </button>
+                <button onclick="openPlayerSidebar('audio')" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center active:scale-90 transition" title="Audio Tracks & Sync">
+                  <span class="material-symbols-rounded text-[19px]">headphones</span>
+                </button>
+                <button onclick="openPlayerSidebar('main')" class="relative w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center active:scale-90 transition" title="Pro Tools & Equalizer">
+                  <span class="material-symbols-rounded text-[19px]">more_vert</span>
+                  <span id="settings-active-dot" class="hidden absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-400 ring-2 ring-black"></span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 2. RIGHT-HAND FLOATING VERTICAL TOOL PILL -->
+          <div class="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-auto z-20">
+            <div class="w-10 py-1.5 px-1 rounded-full hud-capsule flex flex-col items-center gap-1">
+              <button onclick="toggleMute()" id="btn-side-mute" class="w-8 h-8 rounded-full hover:bg-white/15 flex items-center justify-center text-white active:scale-90 transition" title="Mute / Unmute">
+                <span id="icon-mute-state" class="material-symbols-rounded text-[18px]">volume_up</span>
+              </button>
+              <button onclick="toggleScreenLock()" class="w-8 h-8 rounded-full hover:bg-white/15 flex items-center justify-center text-white/90 active:scale-90 transition" title="Lock Touch Controls">
+                <span class="material-symbols-rounded text-[18px]">lock</span>
+              </button>
+              <div class="w-4 h-[1px] bg-white/15 my-0.5"></div>
+              <button onclick="takeScreenshot()" class="w-8 h-8 rounded-full hover:bg-white/15 flex items-center justify-center text-white/90 active:scale-90 transition" title="Save Video Snapshot">
+                <span class="material-symbols-rounded text-[18px]">photo_camera</span>
+              </button>
+              <button onclick="toggleABRepeat()" id="btn-side-ab" class="w-8 h-8 rounded-full hover:bg-white/15 flex items-center justify-center text-white/90 active:scale-90 transition font-mono font-bold text-[9.5px]" title="A-B Loop Repeat">
+                A-B
+              </button>
+            </div>
+          </div>
+
+          <!-- 3. BOTTOM TIMELINE & TRANSPORT DECK -->
+          <div id="player-hud-bottom-bar" class="w-full pb-3.5 pt-6 px-4 sm:px-6 bg-gradient-to-t from-black/95 via-black/65 to-transparent space-y-2 pointer-events-auto z-30 relative">
+            
+            <!-- Quick Speed Popover (Appears above speed button) -->
+            <div id="speed-popover" class="hidden absolute bottom-20 left-4 z-40 p-1.5 rounded-2xl hud-capsule flex items-center gap-1 shadow-2xl">
+              <button onclick="setSpeed(0.5)" class="speed-chip px-2.5 py-1 rounded-xl text-[11px] font-mono text-zinc-300 hover:bg-white/10">0.5x</button>
+              <button onclick="setSpeed(1.0)" class="speed-chip px-2.5 py-1 rounded-xl text-[11px] font-mono glass-pill-active">1.0x</button>
+              <button onclick="setSpeed(1.25)" class="speed-chip px-2.5 py-1 rounded-xl text-[11px] font-mono text-zinc-300 hover:bg-white/10">1.25x</button>
+              <button onclick="setSpeed(1.5)" class="speed-chip px-2.5 py-1 rounded-xl text-[11px] font-mono text-zinc-300 hover:bg-white/10">1.5x</button>
+              <button onclick="setSpeed(2.0)" class="speed-chip px-2.5 py-1 rounded-xl text-[11px] font-mono text-zinc-300 hover:bg-white/10">2.0x</button>
+            </div>
+
+            <!-- Interactive Timeline Scrub Bar -->
+            <div class="flex items-center gap-3 w-full">
+              <span id="player-time-current" class="text-[11.5px] font-mono font-semibold text-white shrink-0">01:53:42</span>
+
+              <div class="flex-1 relative py-2.5 cursor-pointer group" id="seekbar-wrapper">
+                <!-- Chapter Ticks -->
+                <div class="w-full h-[4px] group-hover:h-[6px] bg-white/20 rounded-full overflow-hidden relative transition-all">
+                  <div id="seekbar-buffer" class="h-full bg-white/30 absolute left-0" style="width: 92%;"></div>
+                  <div id="seekbar-progress" class="h-full bg-gradient-to-r from-[#6366f1] via-[#818cf8] to-[#a855f7] shadow-[0_0_10px_rgba(99,102,241,0.8)] absolute left-0" style="width: 80.7%;"></div>
+                </div>
+
+                <!-- A-B Repeat Markers -->
+                <div id="ab-loop-range" class="hidden absolute top-1/2 -translate-y-1/2 h-[5px] bg-fuchsia-500/60 rounded-full pointer-events-none" style="left: 25%; width: 45%;"></div>
+                <div id="ab-marker-a" class="hidden absolute -top-2 -translate-x-1/2 px-1 rounded bg-indigo-600 text-[8px] font-bold text-white font-mono pointer-events-none" style="left: 25%;">A</div>
+                <div id="ab-marker-b" class="hidden absolute -top-2 -translate-x-1/2 px-1 rounded bg-fuchsia-600 text-[8px] font-bold text-white font-mono pointer-events-none" style="left: 70%;">B</div>
+
+                <!-- Scrubber Thumb -->
+                <div id="seekbar-thumb" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 bg-white rounded-full shadow-[0_0_12px_rgba(129,140,248,1)] ring-2 ring-indigo-500 transition-transform group-hover:scale-125 pointer-events-none" style="left: 80.7%;"></div>
+                
+                <input type="range" min="0" max="100" value="80.7" step="0.1" 
+                       id="seekbar-slider" 
+                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                       oninput="onSeekChange(this.value)">
+              </div>
+
+              <span id="player-time-remaining" class="text-[11.5px] font-mono font-medium text-zinc-300 shrink-0">-00:27:15</span>
+            </div>
+
+            <!-- Adaptive Transport Controls Row -->
+            <div id="player-bottom-controls-wrapper" class="w-full flex">
+              
+              <!-- Up Next Queue Pill -->
+              <div class="player-up-next-row flex items-center">
+                <div onclick="openQueueDrawer()" 
+                     class="h-10 px-2.5 rounded-full hud-capsule flex items-center gap-2.5 hover:border-indigo-500/40 active:scale-95 transition cursor-pointer group max-w-full overflow-hidden">
+                  <div class="w-7 h-7 rounded-lg overflow-hidden shrink-0 border border-white/15 bg-black">
+                    <img id="next-up-thumb" src="https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=200&auto=format&fit=crop&q=80" alt="Next" class="w-full h-full object-cover">
+                  </div>
+                  <div class="flex flex-col text-left min-w-0 pr-1">
+                    <div class="flex items-center gap-1.5 leading-none">
+                      <span class="text-[8.5px] uppercase tracking-wider text-zinc-400 font-semibold">Up Next</span>
+                      <span id="next-up-queue-tag" class="text-[8px] font-mono font-bold px-1 rounded bg-indigo-500/30 text-indigo-300">2/5</span>
+                    </div>
+                    <span id="next-up-title" class="text-[11px] text-white font-semibold truncate max-w-[175px]">
+                      Thor: Ragnarok - Battle of Asgard
+                    </span>
+                  </div>
+                  <span class="material-symbols-rounded text-[17px] text-zinc-400 group-hover:text-white shrink-0">chevron_right</span>
+                </div>
+              </div>
+
+              <!-- Transport Deck: Speed/Rotate + Center Play/Seek + Aspect/Fullscreen -->
+              <div class="player-controls-row flex items-center justify-between">
+                
+                <!-- Left Pill: Speed & Orientation -->
+                <div class="h-10 px-2 rounded-full hud-capsule flex items-center gap-0.5 shrink-0">
+                  <button onclick="toggleSpeedPopover(event)" class="h-8 px-2.5 rounded-full hover:bg-white/10 flex items-center justify-center text-xs font-mono font-bold text-indigo-300 active:scale-95 transition" title="Playback Speed">
+                    <span id="player-speed-label">1.0x</span>
+                  </button>
+                  <button onclick="toggleOrientationFromPlayer()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white active:scale-95 transition" title="Rotate Portrait / Landscape">
+                    <span class="material-symbols-rounded text-[19px]">screen_rotation</span>
+                  </button>
+                </div>
+
+                <!-- Center Pill: Rewind 10s, Elevated Play/Pause, Forward 10s -->
+                <div class="relative flex items-center justify-center shrink-0">
+                  <div class="h-11 px-4 rounded-full hud-capsule flex items-center justify-between gap-7">
+                    <button onclick="seekDelta(-10)" class="text-white hover:text-indigo-300 active:scale-90 transition p-1 flex items-center justify-center" title="Rewind 10s">
+                      <span class="material-symbols-rounded text-[23px]">replay_10</span>
+                    </button>
+                    <div class="w-12 h-10 pointer-events-none"></div>
+                    <button onclick="seekDelta(10)" class="text-white hover:text-indigo-300 active:scale-90 transition p-1 flex items-center justify-center" title="Forward 10s">
+                      <span class="material-symbols-rounded text-[23px]">forward_10</span>
+                    </button>
+                  </div>
+
+                  <!-- Protruding Center Play/Pause Button -->
+                  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                    <div class="rounded-full p-[2px] bg-gradient-to-tr from-[#4f46e5] via-[#7c3aed] to-[#c084fc] shadow-[0_0_24px_rgba(99,102,241,0.65)]">
+                      <button onclick="togglePlayPause()" id="btn-play-pause-bottom" 
+                              class="w-13 h-13 w-[52px] h-[52px] rounded-full bg-gradient-to-b from-[#1a1d35] to-[#0a0c16] flex items-center justify-center active:scale-95 transition text-white">
+                        <span id="main-play-pause-icon" class="material-symbols-rounded text-[28px] filled">pause</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right Pill: Aspect Ratio & Fullscreen -->
+                <div class="h-10 px-2 rounded-full hud-capsule flex items-center gap-0.5 shrink-0">
+                  <button onclick="cycleAspectRatio()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white active:scale-95 transition" title="Cycle Aspect Ratio">
+                    <span class="material-symbols-rounded text-[19px]">aspect_ratio</span>
+                  </button>
+                  <button onclick="toggleFullAppMode()" class="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center text-white active:scale-95 transition" title="Expand Player">
+                    <span class="material-symbols-rounded text-[20px]">fullscreen</span>
+                  </button>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ================= CAST / AIRPLAY MODAL INSIDE PLAYER ================= -->
+        <div id="modal-cast" class="hidden absolute inset-0 z-50 bg-black/65 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto">
+          <div class="w-full max-w-xs bg-[#101322] border border-white/15 rounded-3xl p-5 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-rounded text-indigo-400 text-[20px]">cast_connected</span>
+                <h4 class="text-sm font-bold text-white">Cast to Device</h4>
+              </div>
+              <button onclick="closeModal('modal-cast')" class="w-7 h-7 rounded-full bg-white/10 text-zinc-300 flex items-center justify-center">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <div class="space-y-1.5 text-xs">
+              <button onclick="connectCastDevice('Living Room LG OLED (Chromecast)')" class="w-full p-3 rounded-2xl bg-white/[0.05] hover:bg-indigo-500/20 border border-white/[0.06] flex items-center justify-between text-white transition">
+                <span class="flex items-center gap-2.5"><i data-lucide="tv" class="w-4 h-4 text-indigo-400"></i> Living Room LG OLED</span>
+                <span class="text-[10px] font-mono text-emerald-400">4K Ready</span>
+              </button>
+              <button onclick="connectCastDevice('Bedroom Apple TV 4K')" class="w-full p-3 rounded-2xl bg-white/[0.05] hover:bg-indigo-500/20 border border-white/[0.06] flex items-center justify-between text-white transition">
+                <span class="flex items-center gap-2.5"><i data-lucide="airplay" class="w-4 h-4 text-indigo-400"></i> Bedroom Apple TV</span>
+                <span class="text-[10px] font-mono text-zinc-400">AirPlay</span>
+              </button>
+            </div>
+            <div class="flex items-center justify-center gap-2 text-[11px] text-zinc-400 pt-1">
+              <span class="w-2 h-2 rounded-full bg-indigo-400 animate-ping"></span>
+              <span>Scanning local Wi-Fi network...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= UP NEXT QUEUE DRAWER (LEFT SLIDING PANEL) ================= -->
+        <div id="queue-drawer-backdrop" onclick="closeQueueDrawer()" 
+             class="hidden absolute inset-0 z-40 bg-black/50 backdrop-blur-[2px] transition-opacity duration-300 pointer-events-auto"></div>
+
+        <aside id="player-queue-drawer" 
+               class="absolute top-0 left-0 bottom-0 w-[320px] sm:w-[350px] max-w-[86%] z-50 bg-[#0d101d]/95 backdrop-blur-2xl border-r border-white/[0.1] shadow-2xl flex flex-col transition-transform duration-300 ease-out -translate-x-full select-none pointer-events-auto overflow-hidden">
+          <div class="flex items-center justify-between p-4 border-b border-white/[0.08] shrink-0">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#6366f1] to-[#8b5cf6] flex items-center justify-center">
+                <span class="material-symbols-rounded text-white text-[18px]">queue_music</span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h4 class="text-sm font-bold text-white">Up Next Queue</h4>
+                  <span id="queue-count-badge" class="px-2 py-0.5 rounded-full bg-indigo-500/20 text-[10px] font-mono text-indigo-300 font-bold">5</span>
+                </div>
+                <p class="text-[10px] text-zinc-400">Drag handle or use arrows to reorder</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="shuffleQueue()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white flex items-center justify-center" title="Shuffle Queue">
+                <span class="material-symbols-rounded text-[18px]">shuffle</span>
+              </button>
+              <button onclick="closeQueueDrawer()" class="w-8 h-8 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white flex items-center justify-center">
+                <span class="material-symbols-rounded text-[19px]">close</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="queue-items-container" class="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2"></div>
+
+          <div class="p-3 bg-[#080a12] border-t border-white/[0.07] flex items-center justify-between gap-2 shrink-0">
+            <button onclick="addRandomToQueue()" class="flex-1 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 text-xs font-semibold flex items-center justify-center gap-1.5">
+              <span class="material-symbols-rounded text-[16px]">add</span>
+              <span>Add Sample Video</span>
+            </button>
+            <button onclick="clearQueue()" class="px-3 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold">
+              Clear
+            </button>
+          </div>
+        </aside>
+
+        <!-- ================= RIGHT PRO SETTINGS & TOOLS SIDEBAR ================= -->
+        <div id="sidebar-backdrop" onclick="closePlayerSidebar()" 
+             class="hidden absolute inset-0 z-40 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300 pointer-events-auto"></div>
+
+        <aside id="player-settings-sidebar" 
+               class="absolute top-0 right-0 bottom-0 w-[320px] sm:w-[350px] max-w-[86%] z-50 bg-[#0d101d]/95 backdrop-blur-2xl border-l border-white/[0.1] shadow-2xl flex flex-col transition-transform duration-300 ease-out translate-x-full select-none pointer-events-auto overflow-hidden">
+          
+          <!-- SUBVIEW 1: MAIN PRO TOOLS GRID -->
+          <div id="sidebar-view-main" class="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar p-5 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-white/[0.08] shrink-0">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-[#6366f1] to-[#a855f7] flex items-center justify-center">
+                  <span class="material-symbols-rounded text-white text-[16px]">tune</span>
+                </div>
+                <div>
+                  <h4 class="text-sm font-bold text-white">Studio Controls</h4>
+                  <p class="text-[10px] text-zinc-400">Audio, Subtitles & Video FX</p>
+                </div>
+              </div>
+              <button onclick="closePlayerSidebar()" class="w-7 h-7 rounded-full bg-white/[0.08] text-zinc-300 hover:text-white flex items-center justify-center">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <!-- 4x3 Quick Action Grid -->
+            <div class="grid grid-cols-4 gap-y-3.5 gap-x-2 text-center pt-1">
+              <button onclick="openSidebarSubView('audio')" class="group flex flex-col items-center gap-1.5">
+                <div class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 group-hover:text-white transition">
+                  <span class="material-symbols-rounded text-[20px]">headphones</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">Audio</span>
+              </button>
+
+              <button onclick="openSidebarSubView('eq')" class="group flex flex-col items-center gap-1.5">
+                <div class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 group-hover:text-white transition">
+                  <span class="material-symbols-rounded text-[20px]">equalizer</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">Equalizer</span>
+              </button>
+
+              <button onclick="openSidebarSubView('subtitles')" class="group flex flex-col items-center gap-1.5">
+                <div class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 group-hover:text-white transition">
+                  <span class="material-symbols-rounded text-[20px]">closed_caption</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">Subtitles</span>
+              </button>
+
+              <button onclick="openSidebarSubView('timer')" class="group flex flex-col items-center gap-1.5">
+                <div class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 group-hover:text-white transition">
+                  <span class="material-symbols-rounded text-[20px]">bedtime</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">Sleep Timer</span>
+              </button>
+
+              <button onclick="toggleABRepeat()" class="group flex flex-col items-center gap-1.5">
+                <div id="grid-icon-ab" class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 transition">
+                  <span class="material-symbols-rounded text-[20px]">laps</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">A-B Loop</span>
+              </button>
+
+              <button onclick="toggleNightMode()" class="group flex flex-col items-center gap-1.5">
+                <div id="grid-icon-night" class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 transition">
+                  <span class="material-symbols-rounded text-[20px]">dark_mode</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">Night Filter</span>
+              </button>
+
+              <button onclick="toggleMirrorMode()" class="group flex flex-col items-center gap-1.5">
+                <div id="grid-icon-mirror" class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 transition">
+                  <span class="material-symbols-rounded text-[20px]">flip</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">Mirror Flip</span>
+              </button>
+
+              <button onclick="toggleNerdStats()" class="group flex flex-col items-center gap-1.5">
+                <div id="grid-icon-stats" class="w-11 h-11 rounded-2xl bg-white/[0.05] border border-white/[0.07] text-zinc-300 flex items-center justify-center group-hover:bg-indigo-500/20 transition">
+                  <span class="material-symbols-rounded text-[20px]">query_stats</span>
+                </div>
+                <span class="text-[10px] font-medium text-zinc-400 group-hover:text-white">Stream Stats</span>
+              </button>
+            </div>
+
+            <!-- Playback Speed & Audio Boost -->
+            <div class="pt-2 space-y-3 border-t border-white/[0.08]">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-zinc-300 font-medium">Playback Speed</span>
+                  <span id="sidebar-speed-indicator" class="font-mono text-indigo-300 font-bold">1.0x</span>
+                </div>
+                <input type="range" id="sidebar-speed-slider" min="0.25" max="3.0" value="1.0" step="0.25" class="w-full accent-indigo-500 cursor-pointer" oninput="setSpeed(parseFloat(this.value))">
+              </div>
+
+              <div class="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/[0.06]">
+                <div>
+                  <h5 class="text-xs font-semibold text-white">200% Volume Boost</h5>
+                  <p class="text-[10px] text-zinc-400">Software pre-amp gain</p>
+                </div>
+                <button onclick="toggleAudioBoostQuick(this)" id="btn-sidebar-boost" class="px-3 py-1 rounded-full glass-pill text-xs font-semibold">Off</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUBVIEW 2: 5-BAND VERTICAL EQUALIZER -->
+          <div id="sidebar-view-eq" class="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar p-5 space-y-4 hidden">
+            <div class="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+              <button onclick="backToSidebarMain()" class="flex items-center gap-1 text-xs glass-pill px-2.5 py-1 rounded-full">
+                <span class="material-symbols-rounded text-[16px]">arrow_back</span>
+                <span>Back</span>
+              </button>
+              <h4 class="text-sm font-bold text-white">5-Band Equalizer</h4>
+              <button onclick="toggleEqualizerPower(this)" class="px-2.5 py-0.5 rounded-full glass-pill-active text-[10.5px]">On</button>
+            </div>
+
+            <div class="flex gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button onclick="setEqPreset('Flat', [0,0,0,0,0], this)" class="eq-preset-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0">Flat</button>
+              <button onclick="setEqPreset('Cinema', [6,4,-1,3,5], this)" class="eq-preset-chip px-3 py-1 rounded-full glass-pill-active text-[11px] shrink-0">Cinema</button>
+              <button onclick="setEqPreset('Bass Boost', [9,6,0,1,2], this)" class="eq-preset-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0">Bass+</button>
+              <button onclick="setEqPreset('Voice Clarity', [-2,1,6,5,1], this)" class="eq-preset-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0">Vocal</button>
+            </div>
+
+            <!-- True Rotated Vertical Sliders -->
+            <div class="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] grid grid-cols-5 gap-1 items-center justify-items-center">
+              <div class="flex flex-col items-center gap-1.5">
+                <span id="eq-val-0" class="text-[10px] font-mono text-indigo-300 font-bold">+6dB</span>
+                <div class="eq-slider-wrapper">
+                  <input type="range" id="eq-band-0" min="-12" max="12" value="6" class="eq-slider-vertical" oninput="onEqBandChange(0, this.value)">
+                </div>
+                <span class="text-[9.5px] font-mono text-zinc-400">60Hz</span>
+              </div>
+              <div class="flex flex-col items-center gap-1.5">
+                <span id="eq-val-1" class="text-[10px] font-mono text-indigo-300 font-bold">+4dB</span>
+                <div class="eq-slider-wrapper">
+                  <input type="range" id="eq-band-1" min="-12" max="12" value="4" class="eq-slider-vertical" oninput="onEqBandChange(1, this.value)">
+                </div>
+                <span class="text-[9.5px] font-mono text-zinc-400">230Hz</span>
+              </div>
+              <div class="flex flex-col items-center gap-1.5">
+                <span id="eq-val-2" class="text-[10px] font-mono text-indigo-300 font-bold">-1dB</span>
+                <div class="eq-slider-wrapper">
+                  <input type="range" id="eq-band-2" min="-12" max="12" value="-1" class="eq-slider-vertical" oninput="onEqBandChange(2, this.value)">
+                </div>
+                <span class="text-[9.5px] font-mono text-zinc-400">910Hz</span>
+              </div>
+              <div class="flex flex-col items-center gap-1.5">
+                <span id="eq-val-3" class="text-[10px] font-mono text-indigo-300 font-bold">+3dB</span>
+                <div class="eq-slider-wrapper">
+                  <input type="range" id="eq-band-3" min="-12" max="12" value="3" class="eq-slider-vertical" oninput="onEqBandChange(3, this.value)">
+                </div>
+                <span class="text-[9.5px] font-mono text-zinc-400">3.6k</span>
+              </div>
+              <div class="flex flex-col items-center gap-1.5">
+                <span id="eq-val-4" class="text-[10px] font-mono text-indigo-300 font-bold">+5dB</span>
+                <div class="eq-slider-wrapper">
+                  <input type="range" id="eq-band-4" min="-12" max="12" value="5" class="eq-slider-vertical" oninput="onEqBandChange(4, this.value)">
+                </div>
+                <span class="text-[9.5px] font-mono text-zinc-400">14k</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUBVIEW 3: SUBTITLES & LIVE CAPTION TOGGLE -->
+          <div id="sidebar-view-subtitles" class="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar p-5 space-y-4 hidden">
+            <div class="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+              <button onclick="backToSidebarMain()" class="flex items-center gap-1 text-xs glass-pill px-2.5 py-1 rounded-full">
+                <span class="material-symbols-rounded text-[16px]">arrow_back</span>
+                <span>Back</span>
+              </button>
+              <h4 class="text-sm font-bold text-white">Subtitles (CC)</h4>
+              <div class="w-8"></div>
+            </div>
+
+            <div class="space-y-2 text-xs">
+              <button onclick="setSubtitleTrack('off', this)" id="sub-btn-off" class="w-full p-3 rounded-2xl glass-pill-active flex items-center justify-between">
+                <span>Subtitles Disabled</span>
+                <i data-lucide="check" class="w-4 h-4"></i>
+              </button>
+              <button onclick="setSubtitleTrack('en', this)" id="sub-btn-en" class="w-full p-3 rounded-2xl glass-pill flex items-center justify-between">
+                <span>English [CC] (Embedded SRT)</span>
+              </button>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-zinc-300">Subtitle Sync Offset</span>
+                <span id="sidebar-sub-delay-value" class="font-mono text-indigo-300 font-bold">0 ms</span>
+              </div>
+              <input type="range" min="-500" max="500" value="0" step="50" class="w-full accent-indigo-500" oninput="document.getElementById('sidebar-sub-delay-value').textContent = (this.value > 0 ? '+' : '') + this.value + ' ms'">
+            </div>
+          </div>
+
+          <!-- SUBVIEW 4: AUDIO TRACKS -->
+          <div id="sidebar-view-audio" class="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar p-5 space-y-4 hidden">
+            <div class="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+              <button onclick="backToSidebarMain()" class="flex items-center gap-1 text-xs glass-pill px-2.5 py-1 rounded-full">
+                <span class="material-symbols-rounded text-[16px]">arrow_back</span>
+                <span>Back</span>
+              </button>
+              <h4 class="text-sm font-bold text-white">Audio Tracks</h4>
+              <div class="w-8"></div>
+            </div>
+
+            <div class="space-y-2 text-xs">
+              <button onclick="showToast('Switched to Track 1: English 5.1 Surround')" class="w-full p-3 rounded-2xl glass-pill-active flex items-center justify-between">
+                <div class="text-left">
+                  <div class="font-semibold">Track 1 — English 5.1 Surround</div>
+                  <div class="text-[10px] opacity-80 font-mono">Dolby AC3 • 48kHz • 640 kbps</div>
+                </div>
+                <i data-lucide="check" class="w-4 h-4"></i>
+              </button>
+              <button onclick="showToast('Switched to Track 2: Japanese Original Stereo')" class="w-full p-3 rounded-2xl glass-pill flex items-center justify-between">
+                <div class="text-left">
+                  <div class="font-semibold">Track 2 — Director Commentary</div>
+                  <div class="text-[10px] text-zinc-400 font-mono">AAC Stereo • 192 kbps</div>
+                </div>
+              </button>
+            </div>
+
+            <div class="p-3.5 rounded-2xl bg-white/[0.04] space-y-2">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-zinc-300">Audio Delay Sync</span>
+                <span id="sidebar-delay-value" class="font-mono text-indigo-300 font-bold">0 ms</span>
+              </div>
+              <input type="range" min="-500" max="500" value="0" step="25" class="w-full accent-indigo-500" oninput="document.getElementById('sidebar-delay-value').textContent = (this.value > 0 ? '+' : '') + this.value + ' ms'">
+            </div>
+          </div>
+
+          <!-- SUBVIEW 5: SLEEP TIMER -->
+          <div id="sidebar-view-timer" class="flex-1 flex flex-col h-full overflow-y-auto no-scrollbar p-5 space-y-4 hidden">
+            <div class="flex items-center justify-between pb-2 border-b border-white/[0.08]">
+              <button onclick="backToSidebarMain()" class="flex items-center gap-1 text-xs glass-pill px-2.5 py-1 rounded-full">
+                <span class="material-symbols-rounded text-[16px]">arrow_back</span>
+                <span>Back</span>
+              </button>
+              <h4 class="text-sm font-bold text-white">Sleep Timer</h4>
+              <span id="sidebar-sleep-timer-status" class="text-[10px] font-mono text-indigo-300">Off</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-xs font-mono pt-1">
+              <button onclick="setSleepTimer(0, this)" class="sleep-chip py-2.5 rounded-xl glass-pill-active">Off</button>
+              <button onclick="setSleepTimer(15, this)" class="sleep-chip py-2.5 rounded-xl glass-pill">15m</button>
+              <button onclick="setSleepTimer(30, this)" class="sleep-chip py-2.5 rounded-xl glass-pill">30m</button>
+              <button onclick="setSleepTimer(45, this)" class="sleep-chip py-2.5 rounded-xl glass-pill">45m</button>
+              <button onclick="setSleepTimer(60, this)" class="sleep-chip py-2.5 rounded-xl glass-pill">60m</button>
+              <button onclick="setSleepTimer(-1, this)" class="sleep-chip py-2.5 rounded-xl glass-pill font-sans">End of Vid</button>
+            </div>
+          </div>
+
+        </aside>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= APPLICATION JAVASCRIPT ================= -->
+  <script>
+    // ================= 1. CENTRALIZED MEDIA DATA STORE =================
+    let videosData = [
+      { id: 101, title: 'Concert in the Park', duration: '14:32', durationSec: 872, size: '485 MB', sizeMB: 485, res: '1080p', codec: 'MP4', dateGroup: 'Today', timestamp: 6, folder: 'Camera Roll', progress: 65, remaining: '5m left', thumb: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=600&auto=format&fit=crop&q=80' },
+      { id: 102, title: 'Retro Gaming Memories', duration: '06:18', durationSec: 378, size: '210 MB', sizeMB: 210, res: '1080p', codec: 'MKV', dateGroup: 'Today', timestamp: 5, folder: 'Downloads', progress: 40, remaining: '4m left', thumb: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=600&auto=format&fit=crop&q=80' },
+      { id: 103, title: 'Cosmic Odyssey (IMAX Sample)', duration: '02:46:18', durationSec: 9978, size: '4.2 GB', sizeMB: 4300, res: '4K HDR', codec: 'HEVC', dateGroup: 'Yesterday', timestamp: 4, folder: 'Favorite Movies', progress: 80, remaining: '34m left', thumb: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80' },
+      { id: 104, title: 'Physics Lecture 04: Quantum Fields', duration: '52:10', durationSec: 3130, size: '620 MB', sizeMB: 620, res: '720p', codec: 'MP4', dateGroup: 'Yesterday', timestamp: 3, folder: 'Downloads', progress: 0, remaining: '', thumb: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80' },
+      { id: 105, title: 'Sunset Drone Flight', duration: '03:24', durationSec: 204, size: '338 MB', sizeMB: 338, res: '4K HDR', codec: 'MOV', dateGroup: 'Yesterday', timestamp: 2, folder: 'Camera Roll', progress: 25, remaining: '2m left', thumb: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80' },
+      { id: 106, title: 'Misty Alpine Forest Time-lapse', duration: '08:45', durationSec: 525, size: '510 MB', sizeMB: 510, res: '1080p', codec: 'MP4', dateGroup: 'Yesterday', timestamp: 1, folder: 'Screen Recordings', progress: 0, remaining: '', thumb: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=600&auto=format&fit=crop&q=80' }
+    ];
+
+    const foldersMeta = [
+      { name: 'Camera Roll', icon: 'camera', color: 'indigo' },
+      { name: 'Downloads', icon: 'download', color: 'purple' },
+      { name: 'Favorite Movies', icon: 'film', color: 'pink' },
+      { name: 'Screen Recordings', icon: 'video', color: 'cyan' }
+    ];
+
+    let currentView = 'library';
+    let isFullAppMode = false;
+    let isGridView = false;
+    let currentFilter = 'all';
+    let currentSort = 'recent';
+    let searchQuery = '';
+    let selectedContextVideoId = null;
+
+    // Player State
+    let isPlaying = true;
+    let isLocked = false;
+    let decoderMode = 'HW+';
+    let aspectRatioIndex = 0;
+    const aspectRatios = [
+      { name: 'Cover / Fill', style: 'cover' },
+      { name: 'Fit Screen', style: 'contain' },
+      { name: 'Stretch 16:9', style: 'fill' }
+    ];
+    let playbackSpeed = 1.0;
+
+    // ================= 2. TOAST NOTIFICATION SYSTEM =================
+    let toastTimer = null;
+    function showToast(message, iconName = 'check_circle') {
+      const toast = document.getElementById('toast-notification');
+      const msgEl = document.getElementById('toast-message');
+      const iconEl = document.getElementById('toast-icon');
+      if (!toast || !msgEl) return;
+
+      msgEl.textContent = message;
+      if (iconEl) iconEl.textContent = iconName;
+
+      toast.classList.remove('opacity-0', '-translate-y-3');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-3');
+      }, 2200);
+    }
+
+    // ================= 3. RENDER LIBRARY, HISTORY & FOLDERS =================
+    function renderLibrary() {
+      renderHistoryCarousel();
+      renderVideoFeed();
+      renderFoldersList();
+      document.getElementById('total-video-count').textContent = videosData.length;
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function renderHistoryCarousel() {
+      const carousel = document.getElementById('history-carousel');
+      const countPill = document.getElementById('history-count-pill');
+      const historyItems = videosData.filter(v => v.progress > 0 && v.title.toLowerCase().includes(searchQuery));
+      if (countPill) countPill.textContent = historyItems.length;
+
+      if (!carousel) return;
+      carousel.innerHTML = historyItems.map(v => `
+        <div onclick="openVideoPlayer('${v.title.replace(/'/g, "\\'")}', '${v.res}', '${v.duration}', '${v.thumb}')"
+             class="shrink-0 w-36 cursor-pointer group transition-all active:scale-95">
+          <div class="relative w-full aspect-[16/10] rounded-2xl overflow-hidden bg-zinc-900 border border-white/[0.07] shadow-md">
+            <img src="${v.thumb}" alt="${v.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <div class="absolute bottom-1.5 right-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[9.5px] font-mono text-white">
+              <i data-lucide="play" class="w-2.5 h-2.5 fill-indigo-400 text-indigo-400"></i>
+              <span>${v.duration}</span>
+            </div>
+            <div class="absolute bottom-0 inset-x-0 h-[3px] bg-black/60">
+              <div class="h-full bg-gradient-to-r from-[#6366f1] to-[#a855f7]" style="width: ${v.progress}%;"></div>
+            </div>
+          </div>
+          <div class="mt-1.5 px-0.5">
+            <h4 class="text-xs font-semibold text-zinc-100 truncate group-hover:text-indigo-300 transition">${v.title}</h4>
+            <p class="text-[10px] text-zinc-400 truncate mt-0.5">${v.remaining}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderVideoFeed() {
+      const container = document.getElementById('video-feed-container');
+      if (!container) return;
+
+      let filtered = videosData.filter(v => {
+        const matchesSearch = v.title.toLowerCase().includes(searchQuery) ||
+                              v.res.toLowerCase().includes(searchQuery) ||
+                              v.codec.toLowerCase().includes(searchQuery);
+        const matchesChip = currentFilter === 'all' ||
+                            v.res.includes(currentFilter) ||
+                            v.codec.includes(currentFilter);
+        return matchesSearch && matchesChip;
+      });
+
+      filtered.sort((a, b) => {
+        if (currentSort === 'name') return a.title.localeCompare(b.title);
+        if (currentSort === 'size') return b.sizeMB - a.sizeMB;
+        if (currentSort === 'duration') return b.durationSec - a.durationSec;
+        return b.timestamp - a.timestamp;
+      });
+
+      container.className = isGridView ? 'feed-grid-mode' : 'feed-list-mode';
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="col-span-full py-12 text-center space-y-2 text-zinc-500">
+            <i data-lucide="film" class="w-8 h-8 mx-auto opacity-40"></i>
+            <p class="text-xs">No matching videos found</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(v => createVideoCardHTML(v)).join('');
+    }
+
+    function createVideoCardHTML(v) {
+      const is4K = v.res.includes('4K');
+      const badgeClass = is4K
+        ? 'bg-purple-500/20 border-purple-500/40 text-purple-300 font-semibold'
+        : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-200';
+
+      if (isGridView) {
+        return `
+          <div onclick="openVideoPlayer('${v.title.replace(/'/g, "\\'")}', '${v.res}', '${v.duration}', '${v.thumb}')" 
+               class="group cursor-pointer flex flex-col bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.06] rounded-2xl p-2 transition active:scale-[0.98]">
+            <div class="relative w-full aspect-[16/10] rounded-xl overflow-hidden bg-zinc-900">
+              <img src="${v.thumb}" alt="${v.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+              <span class="absolute bottom-1.5 right-1.5 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[9.5px] font-mono text-white">
+                ${v.duration}
+              </span>
+            </div>
+            <div class="mt-2 px-1 flex items-start justify-between gap-1">
+              <div class="min-w-0 flex-1">
+                <h4 class="text-xs font-semibold text-white truncate group-hover:text-indigo-300 transition">${v.title}</h4>
+                <div class="flex items-center gap-1.5 text-[10px] text-zinc-400 font-mono mt-1">
+                  <span>${v.size}</span>
+                  <span>•</span>
+                  <span class="text-indigo-300 font-semibold">${v.res}</span>
+                </div>
+              </div>
+              <button onclick="openVideoContextSheet(${v.id}, event)" class="w-6 h-6 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center shrink-0">
+                <i data-lucide="more-vertical" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div onclick="openVideoPlayer('${v.title.replace(/'/g, "\\'")}', '${v.res}', '${v.duration}', '${v.thumb}')" 
+             class="group cursor-pointer flex items-center justify-between p-2 rounded-2xl hover:bg-white/[0.04] border border-transparent hover:border-white/[0.07] transition active:scale-[0.99]">
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="relative w-28 h-[68px] rounded-xl overflow-hidden bg-zinc-900 shrink-0 border border-white/[0.06]">
+              <img src="${v.thumb}" alt="${v.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+              <span class="absolute bottom-1 right-1 bg-black/80 backdrop-blur-md px-1.5 py-0.5 rounded text-[9px] font-mono text-white flex items-center gap-1">
+                <i data-lucide="play" class="w-2 h-2 fill-white"></i>
+                ${v.duration}
+              </span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <h4 class="text-sm font-semibold text-white truncate group-hover:text-indigo-300 transition">${v.title}</h4>
+              <p class="text-[11px] text-zinc-400 mt-0.5">${v.folder} • ${v.dateGroup}</p>
+              <div class="flex items-center gap-1.5 mt-1.5">
+                <span class="text-[11px] text-zinc-400 font-mono mr-1">${v.size}</span>
+                <span class="px-2 py-0.2 rounded-full border text-[10px] ${badgeClass}">${v.res}</span>
+                <span class="px-2 py-0.2 rounded-full bg-white/[0.06] border border-white/[0.08] text-zinc-300 text-[10px] font-mono">${v.codec}</span>
+              </div>
+            </div>
+          </div>
+          <button onclick="openVideoContextSheet(${v.id}, event)" class="w-8 h-8 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white flex items-center justify-center shrink-0 ml-1" title="More Options">
+            <i data-lucide="more-vertical" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    function renderFoldersList() {
+      const rootList = document.getElementById('folders-root-list');
+      if (!rootList) return;
+
+      rootList.innerHTML = foldersMeta.map(f => {
+        const count = videosData.filter(v => v.folder === f.name).length;
+        return `
+          <div onclick="openFolderDrilldown('${f.name}')" class="cursor-pointer group flex items-center justify-between p-3.5 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition">
+            <div class="flex items-center gap-3.5">
+              <div class="w-11 h-11 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 flex items-center justify-center">
+                <i data-lucide="${f.icon}" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h4 class="text-sm font-semibold text-white group-hover:text-indigo-300 transition">${f.name}</h4>
+                <p class="text-xs text-zinc-400 mt-0.5">${count} video${count === 1 ? '' : 's'}</p>
+              </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-500 group-hover:translate-x-1 transition"></i>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openFolderDrilldown(folderName) {
+      document.getElementById('folders-root-list').classList.add('hidden');
+      const drillView = document.getElementById('folder-drilldown-view');
+      drillView.classList.remove('hidden');
+
+      const items = videosData.filter(v => v.folder === folderName);
+      document.getElementById('drilldown-folder-title').textContent = folderName;
+      document.getElementById('drilldown-folder-count').textContent = `${items.length} video${items.length === 1 ? '' : 's'}`;
+      document.getElementById('folder-drilldown-items').innerHTML = items.map(v => createVideoCardHTML(v)).join('');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeFolderDrilldown() {
+      document.getElementById('folder-drilldown-view').classList.add('hidden');
+      document.getElementById('folders-root-list').classList.remove('hidden');
+    }
+
+    // ================= 4. VIEWPORT & RESPONSIVE STATE ENGINE =================
+    function setView(view) {
+      currentView = view;
+      const screenLib = document.getElementById('screen-library');
+      const screenPlayer = document.getElementById('screen-player');
+      const container = document.getElementById('device-container');
+      const island = document.getElementById('device-island');
+      const statusBar = document.getElementById('device-status-bar');
+      const viewportLabel = document.getElementById('current-viewport-res');
+
+      document.querySelectorAll('[id^="btn-view-"]').forEach(b => {
+        b.className = 'px-3 py-1.5 rounded-full text-zinc-300 hover:text-white transition flex items-center gap-1.5 shrink-0';
+      });
+      const activeBtn = document.getElementById(`btn-view-${view}`);
+      if (activeBtn) {
+        activeBtn.className = 'px-3 py-1.5 rounded-full glass-pill-active transition flex items-center gap-1.5 shrink-0';
+      }
+
+      if (view === 'library') {
+        screenLib.classList.remove('hidden');
+        screenPlayer.classList.add('hidden');
+        container.setAttribute('data-orientation', 'portrait');
+        if (!isFullAppMode) {
+          island.classList.remove('hidden');
+          statusBar.classList.remove('hidden');
+          container.style.width = 'min(390px, calc(100vw - 24px))';
+          container.style.height = 'min(844px, calc(100vh - 96px))';
+          container.className = 'phone-chassis-shadow relative bg-[#0b0d16] rounded-[50px] overflow-hidden border-[6px] border-[#1a1d2e] flex flex-col';
+        }
+        if (viewportLabel) viewportLabel.textContent = isFullAppMode ? 'Full Responsive' : '390 × 844';
+      } else if (view === 'library-landscape') {
+        screenLib.classList.remove('hidden');
+        screenPlayer.classList.add('hidden');
+        container.setAttribute('data-orientation', 'landscape');
+        island.classList.add('hidden');
+        statusBar.classList.remove('hidden');
+        if (!isFullAppMode) {
+          container.style.width = 'min(920px, calc(100vw - 32px))';
+          container.style.height = 'min(480px, calc(100vh - 96px))';
+          container.className = 'phone-chassis-shadow relative bg-[#0b0d16] rounded-[32px] overflow-hidden border-[6px] border-[#1a1d2e] flex flex-col';
+        }
+        if (viewportLabel) viewportLabel.textContent = '920 × 480 (Landscape)';
+      } else if (view === 'player-portrait') {
+        screenLib.classList.add('hidden');
+        screenPlayer.classList.remove('hidden');
+        container.setAttribute('data-orientation', 'portrait');
+        island.classList.add('hidden');
+        statusBar.classList.add('hidden');
+        if (!isFullAppMode) {
+          container.style.width = 'min(390px, calc(100vw - 24px))';
+          container.style.height = 'min(844px, calc(100vh - 96px))';
+          container.className = 'phone-chassis-shadow relative bg-[#0b0d16] rounded-[50px] overflow-hidden border-[6px] border-[#1a1d2e] flex flex-col';
+        }
+        if (viewportLabel) viewportLabel.textContent = '390 × 844 (Portrait Player)';
+      } else if (view === 'player-landscape') {
+        screenLib.classList.add('hidden');
+        screenPlayer.classList.remove('hidden');
+        container.setAttribute('data-orientation', 'landscape');
+        island.classList.add('hidden');
+        statusBar.classList.add('hidden');
+        if (!isFullAppMode) {
+          container.style.width = 'min(890px, calc(100vw - 32px))';
+          container.style.height = 'min(430px, calc(100vh - 96px))';
+          container.className = 'phone-chassis-shadow relative bg-[#0b0d16] rounded-[32px] overflow-hidden border-[6px] border-[#1a1d2e] flex flex-col';
+        }
+        if (viewportLabel) viewportLabel.textContent = '890 × 430 (19.5:9 Cinema)';
+      } else if (view === 'player-tablet') {
+        screenLib.classList.add('hidden');
+        screenPlayer.classList.remove('hidden');
+        container.setAttribute('data-orientation', 'tablet');
+        island.classList.add('hidden');
+        statusBar.classList.add('hidden');
+        if (!isFullAppMode) {
+          container.style.width = 'min(1040px, calc(100vw - 32px))';
+          container.style.height = 'min(600px, calc(100vh - 96px))';
+          container.className = 'phone-chassis-shadow relative bg-[#0b0d16] rounded-[28px] overflow-hidden border-[6px] border-[#1a1d2e] flex flex-col';
+        }
+        if (viewportLabel) viewportLabel.textContent = '1040 × 600 (Tablet 16:9)';
+      }
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleFullAppMode() {
+      isFullAppMode = !isFullAppMode;
+      const container = document.getElementById('device-container');
+      const mainStage = document.getElementById('main-stage');
+      const label = document.getElementById('frame-toggle-label');
+      const btn = document.getElementById('btn-toggle-frame');
+      const island = document.getElementById('device-island');
+
+      if (isFullAppMode) {
+        container.setAttribute('data-frame', 'full');
+        mainStage.className = 'w-full flex-1 flex items-stretch justify-center p-0 overflow-hidden';
+        container.style.width = '100vw';
+        container.style.height = 'calc(100vh - 53px)';
+        container.className = 'relative bg-[#0b0d16] overflow-hidden flex flex-col w-full h-full';
+        island.classList.add('hidden');
+        label.textContent = 'Phone Frame';
+        btn.classList.add('glass-pill-active');
+        showToast('Switched to Full Responsive Web App Mode', 'fullscreen');
+      } else {
+        container.setAttribute('data-frame', 'mockup');
+        mainStage.className = 'w-full flex-1 flex items-center justify-center p-2 sm:p-6 overflow-hidden';
+        label.textContent = 'Full App';
+        btn.classList.remove('glass-pill-active');
+        setView(currentView);
+        showToast('Restored Device Mockup Frame', 'smartphone');
+      }
+    }
+
+    // ================= 5. MODALS, SORT, FILTER & CONTEXT ACTIONS =================
+    function openModal(id) {
+      document.getElementById(id)?.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+    function closeModal(id) {
+      document.getElementById(id)?.classList.add('hidden');
+    }
+
+    function setCategoryFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-chip').forEach(c => {
+        c.className = 'filter-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0';
+      });
+      if (btn) btn.className = 'filter-chip px-3 py-1 rounded-full glass-pill-active text-[11px] shrink-0';
+      renderVideoFeed();
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function applySort(sortKey, labelText) {
+      currentSort = sortKey;
+      document.getElementById('active-sort-label').textContent = labelText;
+      closeModal('sheet-sort');
+      renderVideoFeed();
+      if (window.lucide) lucide.createIcons();
+      showToast(`Sorted by ${labelText}`, 'sort');
+    }
+
+    function openVideoContextSheet(videoId, event) {
+      if (event) event.stopPropagation();
+      selectedContextVideoId = videoId;
+      const v = videosData.find(item => item.id === videoId);
+      if (!v) return;
+
+      document.getElementById('action-sheet-thumb').src = v.thumb;
+      document.getElementById('action-sheet-title').textContent = v.title;
+      document.getElementById('action-sheet-meta').textContent = `${v.res} • ${v.size} • ${v.codec} • ${v.duration}`;
+      openModal('sheet-video-actions');
+    }
+
+    function contextActionPlayNow() {
+      const v = videosData.find(item => item.id === selectedContextVideoId);
+      closeModal('sheet-video-actions');
+      if (v) openVideoPlayer(v.title, v.res, v.duration, v.thumb);
+    }
+
+    function contextActionAddToQueue() {
+      const v = videosData.find(item => item.id === selectedContextVideoId);
+      closeModal('sheet-video-actions');
+      if (v) {
+        playlist.push({
+          id: Date.now(),
+          title: v.title,
+          res: v.res,
+          duration: v.duration,
+          size: v.size,
+          thumb: v.thumb,
+          isCurrent: false
+        });
+        renderQueue();
+        showToast(`Added "${v.title}" to Queue`, 'playlist_add_check');
+      }
+    }
+
+    function contextActionShowInfo() {
+      const v = videosData.find(item => item.id === selectedContextVideoId);
+      closeModal('sheet-video-actions');
+      if (v) showToast(`${v.codec} Container • ${v.res} • ${v.size}`, 'info');
+    }
+
+    function contextActionDelete() {
+      videosData = videosData.filter(item => item.id !== selectedContextVideoId);
+      closeModal('sheet-video-actions');
+      renderLibrary();
+      showToast('Removed video from library', 'delete');
+    }
+
+    function simulateFileImport() {
+      const newVid = {
+        id: Date.now(),
+        title: 'Blade Runner 2049 (Remastered Cut)',
+        duration: '02:43:12',
+        durationSec: 9792,
+        size: '5.4 GB',
+        sizeMB: 5400,
+        res: '4K HDR',
+        codec: 'HEVC',
+        dateGroup: 'Today',
+        timestamp: Date.now(),
+        folder: 'Downloads',
+        progress: 0,
+        remaining: '',
+        thumb: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80'
+      };
+      videosData.unshift(newVid);
+      closeModal('modal-import');
+      renderLibrary();
+      showToast('Imported "Blade Runner 2049" to Library', 'cloud_done');
+    }
+
+    function playNetworkStream() {
+      const val = document.getElementById('stream-url-input').value.trim();
+      closeModal('modal-import');
+      openVideoPlayer(val || 'Live HLS Network Stream (1080p)', '1080p', 'LIVE', 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80');
+      showToast('Connected to Network Stream', 'wifi');
+    }
+
+    // ================= 6. PLAYER & HUD CONTROLS =================
+    function openVideoPlayer(title, res, duration, thumbUrl) {
+      document.getElementById('player-title').textContent = title;
+      document.getElementById('player-meta-duration').textContent = duration;
+      document.getElementById('player-meta-res').textContent = res;
+      if (thumbUrl) {
+        document.getElementById('player-bg-image').src = thumbUrl;
+        document.getElementById('mini-player-thumb').src = thumbUrl;
+      }
+      document.getElementById('mini-player-title').textContent = title;
+      document.getElementById('mini-player-bar').classList.remove('hidden');
+
+      isPlaying = true;
+      updatePlayPauseIcons();
+
+      // Sync with queue
+      let match = playlist.find(i => i.title.toLowerCase() === title.toLowerCase());
+      if (match) {
+        playlist.forEach(i => i.isCurrent = (i.id === match.id));
+      } else {
+        playlist.forEach(i => i.isCurrent = false);
+        playlist.unshift({
+          id: Date.now(),
+          title: title,
+          res: res || '1080p',
+          duration: duration || '14:32',
+          size: '650 MB',
+          thumb: thumbUrl || 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&auto=format&fit=crop&q=80',
+          isCurrent: true
+        });
+      }
+      updateNextUpButton();
+      setView('player-landscape');
+    }
+
+    function closeVideoPlayer() {
+      setView('library');
+      showToast('Minimized to Mini-Player', 'picture_in_picture_alt');
+    }
+
+    function resumeFromMiniPlayer() {
+      setView('player-landscape');
+    }
+
+    function dismissMiniPlayer() {
+      document.getElementById('mini-player-bar').classList.add('hidden');
+      isPlaying = false;
+      updatePlayPauseIcons();
+    }
+
+    function updatePlayPauseIcons() {
+      const mainIcon = document.getElementById('main-play-pause-icon');
+      const miniIcon = document.getElementById('mini-player-play-icon');
+      if (mainIcon) mainIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
+      if (miniIcon) miniIcon.textContent = isPlaying ? 'pause' : 'play_arrow';
+    }
+
+    function togglePlayPause() {
+      isPlaying = !isPlaying;
+      updatePlayPauseIcons();
+      showToast(isPlaying ? 'Playback Resumed' : 'Playback Paused', isPlaying ? 'play_arrow' : 'pause');
+    }
+
+    function triggerDoubleTapSeek(seconds, side) {
+      seekDelta(seconds);
+      const ripple = document.getElementById(side === 'left' ? 'ripple-seek-left' : 'ripple-seek-right');
+      if (ripple) {
+        ripple.classList.remove('opacity-0', 'scale-90');
+        ripple.classList.add('opacity-100', 'scale-100');
+        setTimeout(() => {
+          ripple.classList.remove('opacity-100', 'scale-100');
+          ripple.classList.add('opacity-0', 'scale-90');
+        }, 550);
+      }
+    }
+
+    function toggleOrientationFromPlayer() {
+      if (currentView === 'player-landscape' || currentView === 'player-tablet') {
+        setView('player-portrait');
+      } else {
+        setView('player-landscape');
+      }
+    }
+
+    function toggleDecoderMode() {
+      const modes = ['HW+', 'HW', 'SW'];
+      decoderMode = modes[(modes.indexOf(decoderMode) + 1) % modes.length];
+      document.getElementById('decoder-label').textContent = decoderMode;
+      const statsDec = document.getElementById('stats-decoder');
+      if (statsDec) statsDec.textContent = decoderMode === 'SW' ? 'Software (FFmpeg CPU)' : `Hardware (${decoderMode})`;
+      showToast(`Video Decoder: ${decoderMode} Mode`, 'memory');
+    }
+
+    function cycleAspectRatio() {
+      aspectRatioIndex = (aspectRatioIndex + 1) % aspectRatios.length;
+      const current = aspectRatios[aspectRatioIndex];
+      const img = document.getElementById('player-bg-image');
+      if (img) img.style.objectFit = current.style;
+      showToast(`Aspect Ratio: ${current.name}`, 'aspect_ratio');
+    }
+
+    function takeScreenshot() {
+      showToast('Frame captured & saved to Gallery', 'photo_camera');
+    }
+
+    function connectCastDevice(deviceName) {
+      closeModal('modal-cast');
+      showToast(`Connected to ${deviceName}`, 'cast_connected');
+    }
+
+    function toggleSpeedPopover(e) {
+      if (e) e.stopPropagation();
+      document.getElementById('speed-popover')?.classList.toggle('hidden');
+    }
+
+    function setSpeed(speed) {
+      playbackSpeed = speed;
+      const formatted = speed + 'x';
+      document.getElementById('player-speed-label').textContent = formatted;
+      document.getElementById('sidebar-speed-indicator').textContent = formatted;
+      const slider = document.getElementById('sidebar-speed-slider');
+      if (slider) slider.value = speed;
+      document.getElementById('speed-popover')?.classList.add('hidden');
+      showToast(`Playback Speed: ${formatted}`, 'speed');
+    }
+
+    let hudVisible = true;
+    function togglePlayerHUD(e) {
+      if (isLocked) return;
+      if (e && e.target && e.target.closest('button, input, aside, #speed-popover')) return;
+      document.getElementById('speed-popover')?.classList.add('hidden');
+      hudVisible = !hudVisible;
+      const overlay = document.getElementById('player-hud-overlay');
+      if (overlay) {
+        overlay.classList.toggle('opacity-0', !hudVisible);
+        overlay.classList.toggle('pointer-events-none', !hudVisible);
+      }
+    }
+
+    function toggleScreenLock() {
+      isLocked = !isLocked;
+      const overlay = document.getElementById('player-hud-overlay');
+      const unlockBtn = document.getElementById('btn-floating-unlock');
+      if (isLocked) {
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        unlockBtn.classList.remove('hidden');
+        showToast('Touch Controls Locked', 'lock');
+      } else {
+        overlay.classList.remove('opacity-0', 'pointer-events-none');
+        unlockBtn.classList.add('hidden');
+        showToast('Screen Unlocked', 'lock_open');
+      }
+    }
+
+    let brightnessVal = 75;
+    let volumeVal = 75;
+    let bTimer = null, vTimer = null;
+
+    function handleGestureClick(type, e) {
+      if (isLocked) return;
+      if (type === 'brightness') {
+        brightnessVal = brightnessVal >= 100 ? 25 : brightnessVal + 15;
+        document.getElementById('brightness-bar').style.height = brightnessVal + '%';
+        document.getElementById('brightness-text').textContent = brightnessVal + '%';
+        const el = document.getElementById('gesture-brightness');
+        el.classList.remove('opacity-0');
+        clearTimeout(bTimer);
+        bTimer = setTimeout(() => el.classList.add('opacity-0'), 1400);
+      } else {
+        volumeVal = volumeVal >= 100 ? 20 : volumeVal + 15;
+        document.getElementById('volume-bar').style.height = volumeVal + '%';
+        document.getElementById('volume-text').textContent = volumeVal + '%';
+        const el = document.getElementById('gesture-volume');
+        el.classList.remove('opacity-0');
+        clearTimeout(vTimer);
+        vTimer = setTimeout(() => el.classList.add('opacity-0'), 1400);
+      }
+    }
+
+    let isMuted = false;
+    function toggleMute() {
+      isMuted = !isMuted;
+      document.getElementById('icon-mute-state').textContent = isMuted ? 'volume_off' : 'volume_up';
+      showToast(isMuted ? 'Audio Muted' : 'Audio Unmuted', isMuted ? 'volume_off' : 'volume_up');
+    }
+
+    function seekDelta(seconds) {
+      const slider = document.getElementById('seekbar-slider');
+      let val = parseFloat(slider.value) + (seconds > 0 ? 4 : -4);
+      val = Math.max(0, Math.min(100, val));
+      slider.value = val;
+      onSeekChange(val);
+    }
+
+    function formatTime(totalSec) {
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = Math.floor(totalSec % 60);
+      const pad = n => String(n).padStart(2, '0');
+      return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+
+    function onSeekChange(val) {
+      document.getElementById('seekbar-progress').style.width = val + '%';
+      document.getElementById('seekbar-thumb').style.left = val + '%';
+      document.getElementById('mini-player-progress').style.width = val + '%';
+      const totalSec = 8457;
+      const currentSec = Math.floor((val / 100) * totalSec);
+      const remainSec = totalSec - currentSec;
+      document.getElementById('player-time-current').textContent = formatTime(currentSec);
+      document.getElementById('player-time-remaining').textContent = `-${formatTime(remainSec)}`;
+    }
+
+    // ================= 7. NAVIGATION & SEARCH HANDLERS =================
+    let activeBottomTab = 'home';
+    function setActiveBottomTab(tab) {
+      activeBottomTab = tab;
+      ['home', 'search', 'library', 'profile'].forEach(t => {
+        const icon = document.getElementById(`tab-icon-${t}`);
+        const label = document.getElementById(`tab-label-${t}`);
+        if (t === tab) {
+          icon.className = 'material-symbols-rounded text-[22px] filled text-[#818cf8] drop-shadow-[0_0_8px_rgba(129,140,248,0.6)]';
+          label.className = 'text-[10.5px] font-semibold text-white mt-0.5';
+        } else {
+          icon.className = 'material-symbols-rounded text-[22px] text-zinc-400 group-hover:text-zinc-200';
+          label.className = 'text-[10.5px] font-normal text-zinc-400 group-hover:text-zinc-200 mt-0.5';
+        }
+      });
+
+      if (tab === 'home') {
+        switchMediaTab('video', false);
+        closeModal('sheet-profile');
+      } else if (tab === 'search') {
+        const sc = document.getElementById('search-bar-container');
+        sc.classList.remove('hidden');
+        document.getElementById('offline-search-input').focus();
+        closeModal('sheet-profile');
+      } else if (tab === 'library') {
+        switchMediaTab('folder', false);
+        closeModal('sheet-profile');
+      } else if (tab === 'profile') {
+        openModal('sheet-profile');
+      }
+    }
+
+    function closeProfileSheet() {
+      closeModal('sheet-profile');
+      setActiveBottomTab('home');
+    }
+
+    function switchMediaTab(tab, syncBottom = true) {
+      const vBtn = document.getElementById('tab-subnav-video');
+      const fBtn = document.getElementById('tab-subnav-folder');
+      const vInd = document.getElementById('tab-indicator-video');
+      const fInd = document.getElementById('tab-indicator-folder');
+      const vCont = document.getElementById('view-container-videos');
+      const fCont = document.getElementById('view-container-folders');
+      const chips = document.getElementById('video-filter-chips');
+
+      if (tab === 'video') {
+        vBtn.className = 'text-base font-bold text-white relative pb-1.5 transition flex flex-col items-start cursor-pointer';
+        fBtn.className = 'text-base font-medium text-zinc-500 hover:text-zinc-200 relative pb-1.5 transition flex flex-col items-start cursor-pointer';
+        vInd.classList.remove('hidden');
+        fInd.classList.add('hidden');
+        vCont.classList.remove('hidden');
+        fCont.classList.add('hidden');
+        chips.classList.remove('hidden');
+        if (syncBottom) setActiveBottomTab('home');
+      } else {
+        fBtn.className = 'text-base font-bold text-white relative pb-1.5 transition flex flex-col items-start cursor-pointer';
+        vBtn.className = 'text-base font-medium text-zinc-500 hover:text-zinc-200 relative pb-1.5 transition flex flex-col items-start cursor-pointer';
+        fInd.classList.remove('hidden');
+        vInd.classList.add('hidden');
+        vCont.classList.add('hidden');
+        fCont.classList.remove('hidden');
+        chips.classList.add('hidden');
+        closeFolderDrilldown();
+        if (syncBottom) setActiveBottomTab('library');
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleSearchInput() {
+      const container = document.getElementById('search-bar-container');
+      const input = document.getElementById('offline-search-input');
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        input.focus();
+      } else {
+        container.classList.add('hidden');
+        clearSearch();
+      }
+    }
+
+    function handleSearch(q) {
+      searchQuery = q.toLowerCase().trim();
+      document.getElementById('btn-clear-search').classList.toggle('hidden', searchQuery.length === 0);
+      renderLibrary();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('offline-search-input');
+      input.value = '';
+      handleSearch('');
+    }
+
+    function clearHistory() {
+      videosData.forEach(v => v.progress = 0);
+      document.getElementById('section-history').classList.add('hidden');
+      showToast('Watch History Cleared', 'history');
+    }
+
+    function toggleLayoutMode() {
+      isGridView = !isGridView;
+      const icon = document.getElementById('icon-layout-mode');
+      icon.setAttribute('data-lucide', isGridView ? 'list' : 'layout-grid');
+      renderVideoFeed();
+      if (window.lucide) lucide.createIcons();
+      showToast(isGridView ? 'Grid View Active' : 'Studio List View Active', 'grid_view');
+    }
+
+    // ================= 8. SIDEBAR & PRO AUDIO/VIDEO FX =================
+    function openPlayerSidebar(subview = 'main') {
+      openSidebarSubView(subview);
+      const sb = document.getElementById('player-settings-sidebar');
+      sb.classList.remove('translate-x-full');
+      sb.classList.add('translate-x-0');
+      document.getElementById('sidebar-backdrop').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closePlayerSidebar() {
+      const sb = document.getElementById('player-settings-sidebar');
+      sb.classList.add('translate-x-full');
+      sb.classList.remove('translate-x-0');
+      document.getElementById('sidebar-backdrop').classList.add('hidden');
+    }
+
+    function openSidebarSubView(subview) {
+      ['main', 'eq', 'timer', 'audio', 'subtitles'].forEach(name => {
+        const el = document.getElementById(`sidebar-view-${name}`);
+        if (el) el.classList.toggle('hidden', name !== subview);
+      });
+    }
+
+    function backToSidebarMain() {
+      openSidebarSubView('main');
+    }
+
+    function setEqPreset(name, gains, btn) {
+      document.querySelectorAll('.eq-preset-chip').forEach(c => {
+        c.className = 'eq-preset-chip px-3 py-1 rounded-full glass-pill text-[11px] shrink-0';
+      });
+      if (btn) btn.className = 'eq-preset-chip px-3 py-1 rounded-full glass-pill-active text-[11px] shrink-0';
+      gains.forEach((g, idx) => {
+        const input = document.getElementById(`eq-band-${idx}`);
+        if (input) input.value = g;
+        onEqBandChange(idx, g);
+      });
+      showToast(`EQ Preset: ${name}`, 'equalizer');
+    }
+
+    function onEqBandChange(idx, val) {
+      const label = document.getElementById(`eq-val-${idx}`);
+      if (label) {
+        const n = parseInt(val);
+        label.textContent = (n > 0 ? '+' : '') + n + 'dB';
+      }
+    }
+
+    let isEqOn = true;
+    function toggleEqualizerPower(btn) {
+      isEqOn = !isEqOn;
+      btn.textContent = isEqOn ? 'On' : 'Bypass';
+      btn.className = isEqOn ? 'px-2.5 py-0.5 rounded-full glass-pill-active text-[10.5px]' : 'px-2.5 py-0.5 rounded-full glass-pill text-[10.5px]';
+    }
+
+    function setSubtitleTrack(mode, btn) {
+      const banner = document.getElementById('live-subtitle-caption');
+      document.getElementById('sub-btn-off').className = 'w-full p-3 rounded-2xl glass-pill flex items-center justify-between';
+      document.getElementById('sub-btn-en').className = 'w-full p-3 rounded-2xl glass-pill flex items-center justify-between';
+      btn.className = 'w-full p-3 rounded-2xl glass-pill-active flex items-center justify-between';
+
+      if (mode === 'en') {
+        banner.classList.remove('hidden');
+        showToast('Subtitles: English [CC] Enabled', 'closed_caption');
+      } else {
+        banner.classList.add('hidden');
+        showToast('Subtitles Disabled', 'closed_caption_disabled');
+      }
+    }
+
+    let isMirror = false, isNight = false, isAB = false, isStats = false, isBoost = false;
+
+    function toggleMirrorMode() {
+      isMirror = !isMirror;
+      document.getElementById('player-bg-image').style.transform = isMirror ? 'scaleX(-1)' : 'scaleX(1)';
+      document.getElementById('grid-icon-mirror').classList.toggle('glass-pill-active', isMirror);
+      showToast(isMirror ? 'Mirror Mode On' : 'Mirror Mode Off', 'flip');
+    }
+
+    function toggleNightMode() {
+      isNight = !isNight;
+      document.getElementById('player-bg-image').style.filter = isNight ? 'sepia(0.35) brightness(0.8) contrast(0.95)' : 'none';
+      document.getElementById('grid-icon-night').classList.toggle('glass-pill-active', isNight);
+      showToast(isNight ? 'Night Blue-Light Filter On' : 'Night Filter Off', 'dark_mode');
+    }
+
+    function toggleABRepeat() {
+      isAB = !isAB;
+      document.getElementById('ab-loop-range').classList.toggle('hidden', !isAB);
+      document.getElementById('ab-marker-a').classList.toggle('hidden', !isAB);
+      document.getElementById('ab-marker-b').classList.toggle('hidden', !isAB);
+      document.getElementById('btn-side-ab').classList.toggle('glass-pill-active', isAB);
+      document.getElementById('grid-icon-ab').classList.toggle('glass-pill-active', isAB);
+      showToast(isAB ? 'A-B Loop Active' : 'A-B Loop Cleared', 'laps');
+    }
+
+    function toggleNerdStats() {
+      isStats = !isStats;
+      document.getElementById('overlay-nerd-stats').classList.toggle('hidden', !isStats);
+      document.getElementById('grid-icon-stats').classList.toggle('glass-pill-active', isStats);
+    }
+
+    function toggleAudioBoostQuick(btn) {
+      isBoost = !isBoost;
+      btn.textContent = isBoost ? '+200% On' : 'Off';
+      btn.className = isBoost ? 'px-3 py-1 rounded-full glass-pill-active text-xs font-semibold' : 'px-3 py-1 rounded-full glass-pill text-xs font-semibold';
+      showToast(isBoost ? '200% Audio Boost Activated' : 'Audio Boost Off', 'volume_up');
+    }
+
+    function setSleepTimer(min, btn) {
+      document.querySelectorAll('.sleep-chip').forEach(c => c.className = 'sleep-chip py-2.5 rounded-xl glass-pill');
+      btn.className = 'sleep-chip py-2.5 rounded-xl glass-pill-active';
+      const label = min === 0 ? 'Off' : (min === -1 ? 'End of Video' : `${min}m`);
+      document.getElementById('sidebar-sleep-timer-status').textContent = label;
+      showToast(`Sleep Timer: ${label}`, 'bedtime');
+    }
+
+    // ================= 9. UP NEXT QUEUE ENGINE =================
+    let playlist = [
+      { id: 1, title: 'Avengers: Infinity War', res: '4K HDR', duration: '2h 29m', size: '4.2 GB', thumb: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&auto=format&fit=crop&q=80', isCurrent: true },
+      { id: 2, title: 'Thor: Ragnarok - Battle of Asgard', res: '4K HDR', duration: '2h 10m', size: '6.8 GB', thumb: 'https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&auto=format&fit=crop&q=80', isCurrent: false },
+      { id: 3, title: 'Interstellar: Gargantua Flight', res: '4K UHD', duration: '2h 49m', size: '8.4 GB', thumb: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400&auto=format&fit=crop&q=80', isCurrent: false },
+      { id: 4, title: 'Blade Runner 2049 Cityscape', res: '1080p', duration: '2h 44m', size: '5.1 GB', thumb: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&auto=format&fit=crop&q=80', isCurrent: false }
+    ];
+    let draggedQueueIndex = null;
+
+    function renderQueue() {
+      const container = document.getElementById('queue-items-container');
+      document.getElementById('queue-count-badge').textContent = playlist.length;
+      if (!container) return;
+
+      container.innerHTML = playlist.map((item, idx) => `
+        <div class="queue-card flex items-center gap-2 p-2 rounded-2xl transition ${
+          item.isCurrent ? 'bg-indigo-500/20 border border-indigo-400/50' : 'bg-white/[0.04] border border-white/[0.06]'
+        }"
+        draggable="true"
+        ondragstart="handleQueueDragStart(event, ${idx})"
+        ondragover="handleQueueDragOver(event)"
+        ondrop="handleQueueDrop(event, ${idx})">
+          <div class="cursor-grab p-1 text-zinc-500 hover:text-white"><span class="material-symbols-rounded text-[18px]">drag_indicator</span></div>
+          <div onclick="playQueueItem(${item.id})" class="relative w-14 h-9 rounded-lg overflow-hidden shrink-0 bg-black cursor-pointer">
+            <img src="${item.thumb}" class="w-full h-full object-cover" alt="">
+            ${item.isCurrent ? `
+              <div class="absolute inset-0 bg-black/60 flex items-center justify-center gap-0.5">
+                <span class="w-[2.5px] bg-indigo-400 rounded-full eq-bar-1"></span>
+                <span class="w-[2.5px] bg-indigo-400 rounded-full eq-bar-2"></span>
+                <span class="w-[2.5px] bg-indigo-400 rounded-full eq-bar-3"></span>
+              </div>
+            ` : ''}
+          </div>
+          <div onclick="playQueueItem(${item.id})" class="flex-1 min-w-0 cursor-pointer">
+            <h5 class="text-xs font-semibold text-white truncate">${item.title}</h5>
+            <div class="text-[10px] text-zinc-400 font-mono">${item.res} • ${item.duration}</div>
+          </div>
+          <div class="flex items-center gap-0.5">
+            <button onclick="moveQueueItem(${idx}, -1)" class="p-1 text-zinc-400 hover:text-white disabled:opacity-20" ${idx === 0 ? 'disabled' : ''}>
+              <span class="material-symbols-rounded text-[15px]">arrow_upward</span>
+            </button>
+            <button onclick="moveQueueItem(${idx}, 1)" class="p-1 text-zinc-400 hover:text-white disabled:opacity-20" ${idx === playlist.length - 1 ? 'disabled' : ''}>
+              <span class="material-symbols-rounded text-[15px]">arrow_downward</span>
+            </button>
+            <button onclick="removeFromQueue(${item.id})" class="p-1 text-zinc-500 hover:text-red-400">
+              <span class="material-symbols-rounded text-[15px]">close</span>
+            </button>
+          </div>
+        </div>
+      `).join('');
+      updateNextUpButton();
+    }
+
+    function handleQueueDragStart(e, idx) { draggedQueueIndex = idx; }
+    function handleQueueDragOver(e) { e.preventDefault(); }
+    function handleQueueDrop(e, targetIdx) {
+      e.preventDefault();
+      if (draggedQueueIndex === null || draggedQueueIndex === targetIdx) return;
+      const moved = playlist.splice(draggedQueueIndex, 1)[0];
+      playlist.splice(targetIdx, 0, moved);
+      draggedQueueIndex = null;
+      renderQueue();
+    }
+
+    function moveQueueItem(idx, dir) {
+      const target = idx + dir;
+      if (target < 0 || target >= playlist.length) return;
+      const moved = playlist.splice(idx, 1)[0];
+      playlist.splice(target, 0, moved);
+      renderQueue();
+    }
+
+    function removeFromQueue(id) {
+      playlist = playlist.filter(i => i.id !== id);
+      renderQueue();
+    }
+
+    function shuffleQueue() {
+      playlist.sort(() => Math.random() - 0.5);
+      renderQueue();
+      showToast('Queue Shuffled', 'shuffle');
+    }
+
+    function clearQueue() {
+      playlist = playlist.filter(i => i.isCurrent);
+      renderQueue();
+    }
+
+    function addRandomToQueue() {
+      playlist.push({
+        id: Date.now(),
+        title: 'Dune: Part Two — Arrakis Flight',
+        res: '4K HDR',
+        duration: '2h 46m',
+        size: '7.9 GB',
+        thumb: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&auto=format&fit=crop&q=80',
+        isCurrent: false
+      });
+      renderQueue();
+      showToast('Added video to Queue', 'add');
+    }
+
+    function playQueueItem(id) {
+      const item = playlist.find(i => i.id === id);
+      if (!item) return;
+      playlist.forEach(i => i.isCurrent = (i.id === id));
+      openVideoPlayer(item.title, item.res, item.duration, item.thumb);
+      renderQueue();
+    }
+
+    function updateNextUpButton() {
+      const curIdx = playlist.findIndex(i => i.isCurrent);
+      const nextItem = playlist[curIdx + 1] || playlist[0];
+      if (!nextItem) return;
+      document.getElementById('next-up-thumb').src = nextItem.thumb;
+      document.getElementById('next-up-title').textContent = nextItem.title;
+      document.getElementById('next-up-queue-tag').textContent = `${curIdx + 1}/${playlist.length}`;
+    }
+
+    function openQueueDrawer() {
+      document.getElementById('queue-drawer-backdrop').classList.remove('hidden');
+      const d = document.getElementById('player-queue-drawer');
+      d.classList.remove('-translate-x-full');
+      d.classList.add('translate-x-0');
+      renderQueue();
+    }
+
+    function closeQueueDrawer() {
+      document.getElementById('queue-drawer-backdrop').classList.add('hidden');
+      const d = document.getElementById('player-queue-drawer');
+      d.classList.add('-translate-x-full');
+      d.classList.remove('translate-x-0');
+    }
+
+    function toggleQueueDrawer() {
+      if (!currentView.startsWith('player')) setView('player-landscape');
+      const d = document.getElementById('player-queue-drawer');
+      if (d.classList.contains('translate-x-0')) closeQueueDrawer();
+      else openQueueDrawer();
+    }
+
+    // Hold-to-2X Speed Gesture
+    let fastTimer = null;
+    const playerEl = document.getElementById('screen-player');
+    const fastBadge = document.getElementById('badge-fastplay');
+    playerEl.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button, input, aside')) return;
+      fastTimer = setTimeout(() => {
+        fastBadge.classList.remove('opacity-0', 'scale-90');
+        fastBadge.classList.add('opacity-100', 'scale-100');
+      }, 300);
+    });
+    const endFast = () => {
+      clearTimeout(fastTimer);
+      fastBadge.classList.remove('opacity-100', 'scale-100');
+      fastBadge.classList.add('opacity-0', 'scale-90');
+    };
+    playerEl.addEventListener('mouseup', endFast);
+    playerEl.addEventListener('mouseleave', endFast);
+
+    // Initialize Application
+    renderLibrary();
+    renderQueue();
+  </script>
+</body>
+</html>

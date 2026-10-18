@@ -1,0 +1,700 @@
+/* ==========================================================================
+   Obsidian Violet Liquid Glass Queue Drawer (Left-Side Cinema Opening)
+   ========================================================================== */
+
+.queue-overlay.is-left-side {
+  position: absolute;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start; /* Opens from the LEFT hand side */
+  pointer-events: auto;
+  overflow: hidden;
+}
+
+/* Dimmed backdrop */
+.queue-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: queueFadeBackdrop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 1;
+}
+
+@keyframes queueFadeBackdrop {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==========================================================================
+   Left Drawer Panel (Semi-Transparent Frosted Glass)
+   ========================================================================== */
+
+.queue-drawer-panel {
+  position: relative;
+  z-index: 2;
+  width: 295px;
+  max-width: 85vw;
+  height: 100%;
+  background: rgba(10, 13, 24, 0.65);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 15px 0 45px rgba(0, 0, 0, 0.5), inset -1px 0 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  animation: queueSlideInLeft 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
+}
+
+@keyframes queueSlideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   Header Bar
+   ========================================================================== */
+
+.queue-top-bar {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.02);
+  min-height: 44px;
+}
+
+.queue-top-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-back-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.queue-back-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #ffffff;
+}
+
+.queue-back-btn .material-symbols-rounded {
+  font-size: 15px;
+}
+
+.queue-title-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.queue-heading-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue-main-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.queue-pill-count {
+  font-size: 10.5px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.22);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.queue-subtext {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.queue-top-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue-icon-tool {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.65);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.queue-icon-tool .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.queue-icon-tool:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.queue-icon-tool.is-active {
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.35);
+}
+
+/* ==========================================================================
+   Scroll Area
+   ========================================================================== */
+
+.queue-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.65rem 0.75rem 1.25rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+.queue-scroll-area::-webkit-scrollbar {
+  width: 3px;
+}
+
+.queue-scroll-area::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+/* ==========================================================================
+   Now Playing Section
+   ========================================================================== */
+
+.queue-nowplaying-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.queue-nowplaying-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #818cf8;
+}
+
+.queue-pulse-dot {
+  width: 6px;
+  height: 6px;
+  background: #a855f7;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #a855f7;
+  animation: pulseNeonDot 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes pulseNeonDot {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  100% { transform: scale(1.3); opacity: 1; }
+}
+
+/* Soundwave Equalizer */
+.queue-equalizer-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2.5px;
+  height: 12px;
+}
+
+.eq-bar {
+  width: 2px;
+  background: #a855f7;
+  border-radius: 99px;
+  animation: eqWave 0.75s ease-in-out infinite alternate;
+}
+
+.bar-1 { height: 5px; animation-delay: 0.1s; }
+.bar-2 { height: 11px; animation-delay: 0.35s; }
+.bar-3 { height: 7px; animation-delay: 0.2s; }
+
+@keyframes eqWave {
+  0% { height: 3px; }
+  100% { height: 12px; }
+}
+
+/* Now Playing Card */
+.queue-nowplaying-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6.5px 9px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.queue-hero-thumb-box {
+  position: relative;
+  width: 64px;
+  height: 38px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000000;
+  flex-shrink: 0;
+}
+
+.queue-hero-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.queue-hero-playing-badge {
+  position: absolute;
+  inset: 0;
+  background: rgba(99, 102, 241, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.queue-hero-playing-badge .material-symbols-rounded {
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.queue-chip-duration {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.8);
+  font-size: 8.5px;
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+  color: #ffffff;
+  padding: 1px 3.5px;
+  border-radius: 3px;
+}
+
+.queue-hero-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.queue-hero-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-hero-specs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+/* ==========================================================================
+   Up Next Section & Reorderable List
+   ========================================================================== */
+
+.queue-upnext-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-upnext-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.queue-upnext-label-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-upnext-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.queue-clear-text-btn {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.queue-clear-text-btn:hover {
+  color: #f87171;
+}
+
+/* Autoplay Switch */
+.queue-autoplay-switch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.queue-autoplay-text {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.queue-switch-track {
+  width: 26px;
+  height: 15px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.queue-switch-track.is-on {
+  background: #6366f1;
+}
+
+.queue-switch-thumb {
+  position: absolute;
+  top: 1.5px;
+  left: 1.5px;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.queue-switch-track.is-on .queue-switch-thumb {
+  transform: translateX(11px);
+}
+
+/* ==========================================================================
+   Queue Row (Clean Borderless Item with Drag Grip)
+   ========================================================================== */
+
+.queue-reorder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.queue-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+
+.queue-row:hover {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Dragging state */
+.queue-row.is-dragging {
+  opacity: 0.35;
+  transform: scale(0.97);
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+/* Drop Target Indicator Bar */
+.queue-drop-indicator {
+  position: absolute;
+  top: -2px;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background: #818cf8;
+  border-radius: 999px;
+  box-shadow: 0 0 10px #818cf8, 0 0 4px #c7d2fe;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Row Thumbnail */
+.queue-row-thumb-wrap {
+  position: relative;
+  width: 60px;
+  height: 36px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #000000;
+  flex-shrink: 0;
+}
+
+.queue-row-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.queue-row:hover .queue-row-thumb-img {
+  transform: scale(1.06);
+}
+
+.queue-hover-play-btn {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.queue-hover-play-btn .material-symbols-rounded {
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.queue-row:hover .queue-hover-play-btn {
+  opacity: 1;
+}
+
+/* Row Details */
+.queue-row-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.queue-row-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queue-row:hover .queue-row-title {
+  color: #ffffff;
+}
+
+.queue-row-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.queue-dot {
+  color: #475569;
+  font-size: 10px;
+}
+
+/* Right Actions Column: Remove on hover + Drag Grip */
+.queue-row-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.queue-row-remove {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+}
+
+.queue-row:hover .queue-row-remove {
+  opacity: 0.75;
+}
+
+.queue-row-remove:hover {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  opacity: 1 !important;
+}
+
+.queue-row-remove .material-symbols-rounded {
+  font-size: 15px;
+}
+
+/* Drag Grip Handle on the Right */
+.queue-drag-grip {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  color: rgba(255, 255, 255, 0.28);
+  transition: color 0.15s ease;
+  border-radius: 4px;
+}
+
+.queue-drag-grip:active {
+  cursor: grabbing;
+}
+
+.queue-row:hover .queue-drag-grip {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.queue-drag-grip:hover {
+  color: #a5b4fc;
+}
+
+.queue-grip-icon {
+  font-size: 18px;
+}
+
+/* Empty State */
+.queue-empty-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  gap: 6px;
+  text-align: center;
+}
+
+.queue-empty-icon {
+  font-size: 36px;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.queue-empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.queue-empty-subtitle {
+  font-size: 11px;
+  color: #475569;
+}
+
+/* ==========================================================================
+   Bottom Add Bar
+   ========================================================================== */
+
+.queue-bottom-bar {
+  padding: 0.75rem 1rem 0.9rem 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.queue-add-videos-btn {
+  width: 100%;
+  height: 38px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c7d2fe;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.queue-add-videos-btn .material-symbols-rounded {
+  font-size: 18px;
+}
+
+.queue-add-videos-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.45);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.25);
+}

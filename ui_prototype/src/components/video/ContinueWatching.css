@@ -1,0 +1,165 @@
+/* ==========================================================================
+   PlayMe "Continue Watching" History Section (Consistent with Video Feed)
+   ========================================================================== */
+
+.continue-watching-section {
+  width: 100%;
+  margin-bottom: 14px;
+  box-sizing: border-box;
+}
+
+/* Header Row: Title + Count Badge on left, Clear button on right */
+.continue-watching-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0;
+}
+
+.cw-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cw-title {
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.cw-count-badge {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 17px;
+  height: 16px;
+  box-sizing: border-box;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.cw-clear-btn {
+  background: transparent;
+  border: none;
+  color: #8e95a5;
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-size: 11.5px;
+  font-weight: 400;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.cw-clear-btn:hover {
+  color: #ffffff;
+}
+
+.cw-clear-btn:active {
+  transform: scale(0.96);
+}
+
+/* Horizontal Scrolling Carousel: 10px gap matching cards list */
+.cw-carousel-track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 6px 0 2px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.cw-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Individual Continue Watching Card */
+.cw-card {
+  width: 136px;
+  flex-shrink: 0;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s ease;
+}
+
+.cw-card:hover {
+  opacity: 0.88;
+}
+
+.cw-card:active {
+  transform: scale(0.99);
+}
+
+/* Thumbnail: Exact 72px height matching bottom video cards */
+.cw-thumb-container {
+  width: 136px;
+  height: 72px;
+  border-radius: 9px;
+  overflow: hidden;
+  position: relative;
+  background: #11131e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+}
+
+.cw-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Duration Badge at Bottom-Right */
+.cw-duration-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-size: 9.5px;
+  font-weight: 500;
+  padding: 1px 4.5px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+/* Bottom Progress Bar: Signature Obsidian Violet Gradient */
+.cw-progress-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.cw-progress-fill {
+  height: 100%;
+  background: linear-gradient(to right, #6366f1, #818cf8);
+}
+
+/* Card Title Below Thumbnail */
+.cw-card-title {
+  font-family: var(--font-body, 'Plus Jakarta Sans', sans-serif);
+  font-size: 13px;
+  font-weight: 500;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 5px;
+  line-height: 1.22;
+}
+

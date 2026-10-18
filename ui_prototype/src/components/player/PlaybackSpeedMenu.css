@@ -1,0 +1,235 @@
+/* ==========================================================================
+   PRECISION PLAYBACK SPEED STUDIO — SEMI-TRANSPARENT FROSTED GLASS
+   Matches PlayerSettingsSidebar semi-transparency: rgba(10, 13, 24, 0.68)
+   ========================================================================== */
+
+.speed-dock-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 70;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.speed-master-panel {
+  position: absolute;
+  bottom: 58px;
+  right: 1.4rem;
+  width: 375px;
+  max-width: calc(100vw - 2.8rem);
+  padding: 13px 18px 16px 18px;
+  border-radius: 20px;
+  /* Semi-transparent frosted glass matching settings sidebar */
+  background: rgba(10, 13, 24, 0.68);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 0 0 1px rgba(99, 102, 241, 0.22);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: speedPanelEnter 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  user-select: none;
+}
+
+@keyframes speedPanelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header */
+.speed-master-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.speed-master-title-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.speed-master-icon {
+  font-size: 16px;
+  line-height: 1;
+  color: #818cf8;
+}
+
+.speed-master-caption {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.speed-master-readout-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.speed-master-reset-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #cbd5e1;
+  cursor: pointer;
+  padding: 2.5px 8px;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.speed-master-reset-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.speed-master-hero-val {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 12px rgba(129, 140, 248, 0.5);
+}
+
+/* Geometrically Synchronized Preset Ruler Row */
+.speed-ruler-labels-wrap {
+  position: relative;
+  width: calc(100% - 18px);
+  margin: 0 9px;
+  height: 22px;
+}
+
+.speed-ruler-btn {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.15s ease, transform 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.speed-ruler-btn:hover {
+  color: #ffffff;
+}
+
+.speed-ruler-btn.is-active {
+  color: #c7d2fe;
+  font-weight: 800;
+  transform: translateX(-50%) scale(1.08);
+}
+
+.speed-ruler-active-dot {
+  width: 3.5px;
+  height: 3.5px;
+  border-radius: 50%;
+  background: #a5b4fc;
+  box-shadow: 0 0 6px rgba(165, 180, 252, 0.9);
+  margin-top: 2px;
+}
+
+/* Tactile Precision Track Zone */
+.speed-master-slider-zone {
+  position: relative;
+  width: calc(100% - 18px);
+  margin: 0 9px;
+  height: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  touch-action: none;
+}
+
+.speed-master-track-groove {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.speed-master-track-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #c084fc 100%);
+  border-radius: 9999px;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.65);
+}
+
+.speed-master-notch {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 1px;
+  pointer-events: none;
+  transition: background 0.15s ease;
+}
+
+.speed-master-notch.is-passed {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Tactile Glowing Thumb */
+.speed-master-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow:
+    0 0 10px rgba(255, 255, 255, 0.9),
+    0 0 18px rgba(99, 102, 241, 0.9);
+  pointer-events: none;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s ease;
+}
+
+.speed-master-thumb-core {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6366f1;
+}
+
+.speed-master-slider-zone:active .speed-master-thumb,
+.speed-master-slider-zone.is-dragging .speed-master-thumb {
+  transform: translate(-50%, -50%) scale(1.18);
+}

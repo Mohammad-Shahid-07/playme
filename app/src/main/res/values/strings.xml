@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">PlayMe</string>
+    <string name="tab_videos">Videos</string>
+    <string name="tab_folders">Folders</string>
+    <string name="tab_history">Recent</string>
+    <string name="tab_vault">Private Vault</string>
+    <string name="search_videos">Search videos or folders…</string>
+    <string name="permission_required_title">Storage Permission Needed</string>
+    <string name="permission_required_desc">PlayMe needs access to your device media files to scan and play your videos with hardware acceleration.</string>
+    <string name="grant_permission">Grant Access</string>
+    <string name="empty_videos">No videos found</string>
+    <string name="empty_recent">No recently watched videos</string>
+    <string name="brightness">Brightness</string>
+    <string name="volume">Volume</string>
+    <string name="playback_speed">Playback Speed</string>
+    <string name="subtitles">Subtitles</string>
+    <string name="audio_tracks">Audio Tracks</string>
+    <string name="aspect_ratio">Aspect Ratio</string>
+    <string name="pip_mode">Picture-in-Picture</string>
+    <string name="floating_window">Floating Pop-up</string>
+    <string name="background_play">Background Play</string>
+    <string name="screen_locked">Screen Locked</string>
+    <string name="screen_unlocked">Screen Unlocked</string>
+    <string name="vault_title">Private Media Vault</string>
+    <string name="vault_enter_pin">Enter 4-digit PIN</string>
+    <string name="vault_create_pin">Set 4-digit PIN</string>
+    <string name="vault_empty">No private videos yet</string>
+    <string name="hide_video">Move to Private Vault</string>
+    <string name="unhide_video">Restore to Public Library</string>
+    <string name="playback_channel_name">PlayMe Background Playback</string>
+    <string name="playback_channel_desc">Media playback and background controls for PlayMe</string>
+</resources>

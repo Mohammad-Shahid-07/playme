@@ -1,0 +1,94 @@
+/* ==========================================================================
+   PlayMe Video Feed List Styling (Exact Screenshot Match)
+   ========================================================================== */
+
+.video-feed-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* Home App Header Bar */
+.home-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 2px 10px 2px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.home-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.home-brand-title {
+  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-size: 19px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.home-brand-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #818cf8;
+  box-shadow: 0 0 8px rgba(129, 140, 248, 0.8);
+  margin-top: 1px;
+}
+
+.home-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.home-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.home-action-btn:hover {
+  background: rgba(99, 102, 241, 0.18);
+  border-color: rgba(99, 102, 241, 0.35);
+  color: #ffffff;
+}
+
+.home-action-btn:active {
+  transform: scale(0.93);
+}
+
+.home-action-btn .material-symbols-rounded {
+  font-size: 17px;
+}
+
+/* Vertical Video Cards List (Tight vertical gap matching reference) */
+.video-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Grid Layout Alternative View (Structured 2-column grid container) */
+.video-card-list.is-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  width: 100%;
+}
+
+

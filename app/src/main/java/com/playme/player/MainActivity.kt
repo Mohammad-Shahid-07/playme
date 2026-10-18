@@ -46,18 +46,24 @@ class MainActivity : ComponentActivity() {
                 ) {
                     var currentTab by remember { mutableStateOf(MainNavTab.VIDEO) }
                     var activeVideo by remember { mutableStateOf<com.playme.player.core.model.VideoItem?>(null) }
-                    val context = androidx.compose.ui.platform.LocalContext.current
-                    val playerViewModel: com.playme.player.feature.player.vm.PlayerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-                    val playerEngine = remember {
-                        com.playme.player.core.player.PlayMePlayerEngine(context.applicationContext)
-                    }
-
-                    androidx.compose.runtime.LaunchedEffect(playerEngine) {
-                        playerViewModel.attachEngine(playerEngine)
-                    }
 
                     Box(modifier = Modifier.fillMaxSize()) {
-                        if (activeVideo != null) {
+                        val video = activeVideo
+                        if (video != null) {
+                            val context = androidx.compose.ui.platform.LocalContext.current
+                            val playerViewModel: com.playme.player.feature.player.vm.PlayerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                            val playerEngine = remember(video.id) {
+                                com.playme.player.core.player.PlayMePlayerEngine(context)
+                            }
+
+                            androidx.compose.runtime.DisposableEffect(playerEngine) {
+                                playerViewModel.attachEngine(playerEngine)
+                                playerViewModel.setInitialVideo(video)
+                                onDispose {
+                                    playerEngine.release()
+                                }
+                            }
+
                             com.playme.player.feature.player.ui.PlayerScreen(
                                 viewModel = playerViewModel,
                                 onClose = {
@@ -69,9 +75,8 @@ class MainActivity : ComponentActivity() {
                             when (currentTab) {
                                 MainNavTab.VIDEO -> {
                                     LibraryScreen(
-                                        onVideoClick = { video ->
-                                            activeVideo = video
-                                            playerViewModel.setInitialVideo(video)
+                                        onVideoClick = { clickedVideo ->
+                                            activeVideo = clickedVideo
                                         }
                                     )
                                 }

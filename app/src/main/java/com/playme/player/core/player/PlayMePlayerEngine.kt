@@ -41,26 +41,38 @@ class PlayMePlayerEngine(
     }
 
     private fun buildPlayer(decoderMode: DecoderMode) {
-        val renderersFactory = DefaultRenderersFactory(context).apply {
-            setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-            setEnableDecoderFallback(true)
-        }
-
-        val trackSelector = DefaultTrackSelector(context)
-        val audioAttributes = AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-            .build()
-
-        exoPlayer = ExoPlayer.Builder(context, renderersFactory)
-            .setTrackSelector(trackSelector)
-            .setAudioAttributes(audioAttributes, true)
-            .setHandleAudioBecomingNoisy(true)
-            .setSeekBackIncrementMs(10_000L)
-            .setSeekForwardIncrementMs(10_000L)
-            .build().apply {
-                addListener(playerListener)
+        try {
+            val renderersFactory = DefaultRenderersFactory(context).apply {
+                setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+                setEnableDecoderFallback(true)
             }
+
+            val trackSelector = DefaultTrackSelector(context)
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build()
+
+            exoPlayer = ExoPlayer.Builder(context, renderersFactory)
+                .setTrackSelector(trackSelector)
+                .setAudioAttributes(audioAttributes, true)
+                .setSeekBackIncrementMs(10_000L)
+                .setSeekForwardIncrementMs(10_000L)
+                .build().apply {
+                    addListener(playerListener)
+                }
+        } catch (_: Throwable) {
+            try {
+                exoPlayer = ExoPlayer.Builder(context)
+                    .setSeekBackIncrementMs(10_000L)
+                    .setSeekForwardIncrementMs(10_000L)
+                    .build().apply {
+                        addListener(playerListener)
+                    }
+            } catch (e2: Throwable) {
+                engineListener?.onError("Player initialization failed: ${e2.message}")
+            }
+        }
     }
 
     private val playerListener = object : Player.Listener {

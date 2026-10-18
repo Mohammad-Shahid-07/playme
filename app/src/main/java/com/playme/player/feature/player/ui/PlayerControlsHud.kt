@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.AspectRatio
 import androidx.compose.material.icons.rounded.Forward10
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -28,7 +29,6 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Replay10
 import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Tune
@@ -286,7 +286,7 @@ fun PlayerControlsHud(
                             // Queue Button
                             IconButton(onClick = { onAction(PlayerAction.ToggleQueueDrawer(null)) }) {
                                 Icon(
-                                    imageVector = Icons.Rounded.QueueMusic,
+                                    imageVector = Icons.AutoMirrored.Rounded.QueueMusic,
                                     contentDescription = "Queue",
                                     tint = PlayMeColors.TextPrimary
                                 )

@@ -37,4 +37,18 @@ sealed interface PlayerAction {
     data object PlayPrevious : PlayerAction
     data object ToggleFullscreen : PlayerAction
     data object ClosePlayer : PlayerAction
+    data object ToggleShuffle : PlayerAction
+    data object CycleRepeatMode : PlayerAction
+    data object ToggleAutoplay : PlayerAction
+    data class RemoveFromQueue(val videoId: String) : PlayerAction
+    data object ClearQueue : PlayerAction
+    data class SetSpeedPickerOpen(val isOpen: Boolean) : PlayerAction
+    data object ToggleDialogueClarity : PlayerAction
+    data class SetVolumeBoost(val percent: Int) : PlayerAction
+    data object ToggleAmbientGlow : PlayerAction
+    data class SetSleepTimer(val minutes: Int) : PlayerAction
+    data object ToggleBackgroundPlay : PlayerAction
+    data class SelectAudioTrack(val track: String) : PlayerAction
+    data class SelectSubtitleTrack(val track: String) : PlayerAction
+    data class SetSubtitleSize(val size: String) : PlayerAction
 }

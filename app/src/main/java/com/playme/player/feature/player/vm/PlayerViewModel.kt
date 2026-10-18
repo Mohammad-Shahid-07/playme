@@ -32,9 +32,11 @@ class PlayerViewModel : ViewModel() {
         resetControlsTimer()
     }
 
-    fun attachEngine(playerEngine: PlayerEngineContract) {
+    fun attachEngine(playerEngine: PlayerEngineContract?) {
         if (this.engine === playerEngine) return
         this.engine = playerEngine
+        if (playerEngine == null) return
+
         playerEngine.setListener(object : PlayerEngineListener {
             override fun onPositionChanged(positionMs: Long, durationMs: Long, bufferMs: Long) {
                 _state.update {
@@ -113,6 +115,20 @@ class PlayerViewModel : ViewModel() {
             PlayerAction.PlayPrevious -> playPrevious()
             PlayerAction.ToggleFullscreen -> _state.update { it.copy(isFullscreen = !it.isFullscreen) }
             PlayerAction.ClosePlayer -> { /* Handled in Composable */ }
+            PlayerAction.ToggleShuffle -> toggleShuffle()
+            PlayerAction.CycleRepeatMode -> cycleRepeatMode()
+            PlayerAction.ToggleAutoplay -> _state.update { it.copy(isAutoplay = !it.isAutoplay) }
+            is PlayerAction.RemoveFromQueue -> removeFromQueue(action.videoId)
+            PlayerAction.ClearQueue -> clearQueue()
+            is PlayerAction.SetSpeedPickerOpen -> _state.update { it.copy(isSpeedPickerOpen = action.isOpen) }
+            PlayerAction.ToggleDialogueClarity -> toggleDialogueClarity()
+            is PlayerAction.SetVolumeBoost -> setVolumeBoost(action.percent)
+            PlayerAction.ToggleAmbientGlow -> toggleAmbientGlow()
+            is PlayerAction.SetSleepTimer -> setSleepTimer(action.minutes)
+            PlayerAction.ToggleBackgroundPlay -> toggleBackgroundPlay()
+            is PlayerAction.SelectAudioTrack -> _state.update { it.copy(selectedAudioTrack = action.track) }
+            is PlayerAction.SelectSubtitleTrack -> _state.update { it.copy(selectedSubtitleTrack = action.track) }
+            is PlayerAction.SetSubtitleSize -> _state.update { it.copy(subtitleSize = action.size) }
         }
     }
 
@@ -244,6 +260,66 @@ class PlayerViewModel : ViewModel() {
         val next = PlayerDelaysDelegate.stepSubtitle(_state.value.subtitleDelayMs, deltaMs)
         _state.update { it.copy(subtitleDelayMs = next) }
         showToast("Subtitle delay: ${next}ms")
+    }
+
+    private fun toggleShuffle() {
+        val next = !_state.value.isShuffle
+        val updated = if (next) PlayerQueueDelegate.shuffleQueue(_state.value.playlist, _state.value.currentVideo) else _state.value.playlist
+        _state.update { it.copy(isShuffle = next, playlist = updated) }
+        showToast(if (next) "Shuffle ON" else "Shuffle OFF")
+    }
+
+    private fun cycleRepeatMode() {
+        val next = PlayerQueueDelegate.cycleRepeat(_state.value.repeatMode)
+        _state.update { it.copy(repeatMode = next) }
+        showToast("Repeat: $next")
+    }
+
+    private fun removeFromQueue(id: String) {
+        val updated = PlayerQueueDelegate.removeTrack(_state.value.playlist, id)
+        _state.update { it.copy(playlist = updated) }
+    }
+
+    private fun clearQueue() {
+        val current = _state.value.currentVideo
+        _state.update { it.copy(playlist = if (current != null) listOf(current) else emptyList()) }
+        showToast("Queue Cleared")
+    }
+
+    private fun toggleDialogueClarity() {
+        val active = !_state.value.isDialogueClarityActive
+        _state.update { it.copy(isDialogueClarityActive = active) }
+        showToast(if (active) "Dialogue Clarity ON" else "Dialogue Clarity OFF")
+    }
+
+    private fun setVolumeBoost(percent: Int) {
+        _state.update { it.copy(volumeBoostPercent = percent) }
+        showToast("Volume Boost: $percent%")
+    }
+
+    private fun toggleAmbientGlow() {
+        val active = !_state.value.ambientGlowEnabled
+        _state.update { it.copy(ambientGlowEnabled = active) }
+        showToast(if (active) "Ambilight ON" else "Ambilight OFF")
+    }
+
+    private fun setSleepTimer(minutes: Int) {
+        val next = if (minutes == -1) {
+            when (_state.value.sleepTimerMinutes) {
+                0 -> 15
+                15 -> 30
+                30 -> 60
+                else -> 0
+            }
+        } else minutes
+        _state.update { it.copy(sleepTimerMinutes = next) }
+        showToast(if (next == 0) "Sleep Timer Off" else "Sleep Timer: ${next}m")
+    }
+
+    private fun toggleBackgroundPlay() {
+        val active = !_state.value.backgroundPlayEnabled
+        _state.update { it.copy(backgroundPlayEnabled = active) }
+        showToast(if (active) "Background Play ON" else "Background Play OFF")
     }
 
     private fun playTrack(video: VideoItem) {

@@ -17,11 +17,16 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -30,11 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.playme.player.core.model.VideoItem
-import com.playme.player.feature.library.ui.VideoThumbnailImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,8 +45,17 @@ fun QueueBottomSheet(
     isOpen: Boolean,
     onClose: () -> Unit,
     playlist: List<VideoItem>,
+    currentVideo: VideoItem?,
     currentIndex: Int,
+    isShuffle: Boolean,
+    repeatMode: String,
+    isAutoplay: Boolean,
+    onToggleShuffle: () -> Unit,
+    onCycleRepeatMode: () -> Unit,
+    onToggleAutoplay: () -> Unit,
     onSelectTrack: (VideoItem) -> Unit,
+    onRemoveTrack: (String) -> Unit,
+    onClearQueue: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (!isOpen) return
@@ -53,130 +65,131 @@ fun QueueBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = Color(0xF50C0E1A),
-        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = Color(0xF20B0D18),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         dragHandle = null,
         modifier = modifier
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header: Title + Count + Close
+            // 1. Top Header: Title, Count, Tools, Close
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Playback Queue",
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Queue", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Box(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(Color(0x2E6366F1))
-                            .border(1.dp, Color(0x596366F1), CircleShape)
+                            .background(Color(0x336366F1))
+                            .border(1.dp, Color(0x666366F1), CircleShape)
                             .padding(horizontal = 8.dp, vertical = 2.dp)
                     ) {
+                        Text("${playlist.size}", color = Color(0xFFC7D2FE), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Shuffle Button
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(if (isShuffle) Color(0x336366F1) else Color(0x14FFFFFF))
+                            .border(1.dp, if (isShuffle) Color(0xFF6366F1) else Color.Transparent, CircleShape)
+                            .clickable(onClick = onToggleShuffle),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Shuffle, "Shuffle", tint = if (isShuffle) Color(0xFF818CF8) else Color(0x99FFFFFF), modifier = Modifier.size(16.dp))
+                    }
+
+                    // Repeat Button
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(if (repeatMode != "off") Color(0x336366F1) else Color(0x14FFFFFF))
+                            .border(1.dp, if (repeatMode != "off") Color(0xFF6366F1) else Color.Transparent, CircleShape)
+                            .clickable(onClick = onCycleRepeatMode),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val icon = if (repeatMode == "one") Icons.Rounded.RepeatOne else Icons.Rounded.Repeat
+                        Icon(icon, "Repeat", tint = if (repeatMode != "off") Color(0xFF818CF8) else Color(0x99FFFFFF), modifier = Modifier.size(16.dp))
+                    }
+
+                    // Close Button
+                    Box(
+                        modifier = Modifier.size(32.dp).clip(CircleShape).clickable(onClick = onClose),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Rounded.Close, "Close", tint = Color(0x99FFFFFF), modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // 2. NOW PLAYING Section
+            QueueNowPlayingCard(video = currentVideo ?: playlist.getOrNull(currentIndex))
+
+            // 3. UP NEXT Header
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("UP NEXT", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                    if (playlist.size > 1) {
                         Text(
-                            text = "${playlist.size} tracks",
-                            color = Color(0xFFA5B4FC),
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold
+                            text = "Clear All",
+                            color = Color(0xFF818CF8),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.clickable(onClick = onClearQueue)
                         )
                     }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .clip(CircleShape)
-                        .clickable(onClick = onClose),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Close,
-                        contentDescription = "Close",
-                        tint = Color(0xB3FFFFFF),
-                        modifier = Modifier.size(18.dp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Autoplay", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                    Switch(
+                        checked = isAutoplay,
+                        onCheckedChange = { onToggleAutoplay() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = Color(0xFF6366F1),
+                            uncheckedThumbColor = Color(0xFF94A3B8),
+                            uncheckedTrackColor = Color(0x33FFFFFF)
+                        ),
+                        modifier = Modifier.size(width = 36.dp, height = 20.dp)
                     )
                 }
             }
 
-            // Playlist track items
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(320.dp),
-                contentPadding = PaddingValues(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                itemsIndexed(playlist, key = { _, item -> item.id }) { index, item ->
-                    val isCurrent = index == currentIndex
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (isCurrent) Color(0x266366F1) else Color(0x0AFFFFFF))
-                            .border(1.dp, if (isCurrent) Color(0x59818CF8) else Color(0x12FFFFFF), RoundedCornerShape(10.dp))
-                            .clickable { onSelectTrack(item); onClose() }
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        // Thumbnail Preview
-                        Box(
-                            modifier = Modifier
-                                .size(width = 54.dp, height = 32.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF11131E))
-                        ) {
-                            VideoThumbnailImage(
-                                video = item,
-                                targetWidth = 120,
-                                targetHeight = 80,
-                                modifier = Modifier.size(54.dp, 32.dp)
-                            )
-                        }
-
-                        // Title & duration
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = item.title,
-                                color = if (isCurrent) Color(0xFF818CF8) else Color.White,
-                                fontSize = 12.5.sp,
-                                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = "${item.durationFormatted} • ${item.fileSizeFormatted}",
-                                color = Color(0xFF8E95A5),
-                                fontSize = 10.5.sp
-                            )
-                        }
-
-                        if (isCurrent) {
-                            Icon(
-                                imageVector = Icons.Rounded.Equalizer,
-                                contentDescription = "Playing",
-                                tint = Color(0xFF818CF8),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
+            // 4. Up Next Track List
+            val upcoming = playlist.filterIndexed { index, _ -> index != currentIndex }
+            if (upcoming.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
+                    Text("Queue is empty. Videos you add will appear here.", color = Color(0x66FFFFFF), fontSize = 12.sp)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().height(260.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp)
+                ) {
+                    itemsIndexed(upcoming, key = { _, item -> item.id }) { _, item ->
+                        QueueTrackItemRow(
+                            video = item,
+                            isPlaying = false,
+                            onSelect = { onSelectTrack(item) },
+                            onRemove = { onRemoveTrack(item.id) }
+                        )
                     }
                 }
             }

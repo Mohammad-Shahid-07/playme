@@ -171,7 +171,7 @@ fun PlayerScreen(
                 speed = state.playbackSpeed,
                 onSeekTo = { posMs -> viewModel.onAction(PlayerAction.SeekTo(posMs)) },
                 onTogglePlay = { viewModel.onAction(PlayerAction.TogglePlay) },
-                onCycleSpeed = { viewModel.onAction(PlayerAction.CycleSpeed) },
+                onCycleSpeed = { viewModel.onAction(PlayerAction.SetSpeedPickerOpen(true)) },
                 onPlayPrevious = { viewModel.onAction(PlayerAction.PlayPrevious) },
                 onPlayNext = { viewModel.onAction(PlayerAction.PlayNext) },
                 onFullscreenToggle = { viewModel.onAction(PlayerAction.ToggleFullscreen) },
@@ -205,25 +205,52 @@ fun PlayerScreen(
             isOpen = state.isQueueOpen,
             onClose = { viewModel.onAction(PlayerAction.SetQueueOpen(false)) },
             playlist = state.playlist,
+            currentVideo = state.currentVideo,
             currentIndex = state.currentIndex,
-            onSelectTrack = { video -> viewModel.onAction(PlayerAction.PlayTrack(video)) }
+            isShuffle = state.isShuffle,
+            repeatMode = state.repeatMode,
+            isAutoplay = state.isAutoplay,
+            onToggleShuffle = { viewModel.onAction(PlayerAction.ToggleShuffle) },
+            onCycleRepeatMode = { viewModel.onAction(PlayerAction.CycleRepeatMode) },
+            onToggleAutoplay = { viewModel.onAction(PlayerAction.ToggleAutoplay) },
+            onSelectTrack = { video -> viewModel.onAction(PlayerAction.PlayTrack(video)) },
+            onRemoveTrack = { id -> viewModel.onAction(PlayerAction.RemoveFromQueue(id)) },
+            onClearQueue = { viewModel.onAction(PlayerAction.ClearQueue) }
         )
 
-        // 9. Side/Bottom Settings Drawer (Delays, Decoder, Aspect Ratio)
+        // 9. Side/Bottom Settings Drawer (Delays, Decoder, Aspect Ratio, Audio FX)
         PlayerSettingsSheet(
             isOpen = state.isSettingsOpen,
             onClose = { viewModel.onAction(PlayerAction.SetSettingsOpen(false)) },
-            activeTab = state.activeSettingsTab,
-            onTabSelected = { tab -> viewModel.onAction(PlayerAction.SetSettingsTab(tab)) },
             audioDelayMs = state.audioDelayMs,
             subtitleDelayMs = state.subtitleDelayMs,
             decoderMode = state.decoderMode,
             aspectRatioMode = state.aspectRatioMode,
+            isDialogueClarity = state.isDialogueClarityActive,
+            isAmbientGlow = state.ambientGlowEnabled,
+            sleepTimerMinutes = state.sleepTimerMinutes,
+            backgroundPlay = state.backgroundPlayEnabled,
+            playbackSpeed = state.playbackSpeed,
+            selectedAudio = state.selectedAudioTrack,
+            selectedSubtitle = state.selectedSubtitleTrack,
             onAdjustAudioDelay = { delta -> viewModel.onAction(PlayerAction.AdjustAudioDelay(delta)) },
             onAdjustSubtitleDelay = { delta -> viewModel.onAction(PlayerAction.AdjustSubtitleDelay(delta)) },
+            onResetDelays = { viewModel.onAction(PlayerAction.ResetDelays) },
             onToggleDecoderMode = { viewModel.onAction(PlayerAction.ToggleDecoderMode) },
             onCycleAspectRatio = { viewModel.onAction(PlayerAction.CycleAspectRatio) },
-            onResetDelays = { viewModel.onAction(PlayerAction.ResetDelays) }
+            onToggleDialogueClarity = { viewModel.onAction(PlayerAction.ToggleDialogueClarity) },
+            onToggleAmbientGlow = { viewModel.onAction(PlayerAction.ToggleAmbientGlow) },
+            onToggleBackgroundPlay = { viewModel.onAction(PlayerAction.ToggleBackgroundPlay) },
+            onOpenSpeedPicker = { viewModel.onAction(PlayerAction.SetSpeedPickerOpen(true)) },
+            onCycleSleepTimer = { viewModel.onAction(PlayerAction.SetSleepTimer(-1)) }
+        )
+
+        // 10. Playback Speed Selector Modal
+        PlaybackSpeedSheet(
+            isOpen = state.isSpeedPickerOpen,
+            onClose = { viewModel.onAction(PlayerAction.SetSpeedPickerOpen(false)) },
+            currentSpeed = state.playbackSpeed,
+            onSpeedSelected = { speed -> viewModel.onAction(PlayerAction.SetSpeed(speed)) }
         )
     }
 }

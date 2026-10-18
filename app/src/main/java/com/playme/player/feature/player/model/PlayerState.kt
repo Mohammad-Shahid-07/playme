@@ -53,7 +53,19 @@ data class PlayerState(
     val audioDelayMs: Long = 0L,
     val subtitleDelayMs: Long = 0L,
     val currentSubtitle: String? = null,
-    val isFullscreen: Boolean = false
+    val isFullscreen: Boolean = false,
+    val isShuffle: Boolean = false,
+    val repeatMode: String = "all", // "off", "all", "one"
+    val isAutoplay: Boolean = true,
+    val isSpeedPickerOpen: Boolean = false,
+    val isDialogueClarityActive: Boolean = true,
+    val volumeBoostPercent: Int = 100, // 100% to 200%
+    val ambientGlowEnabled: Boolean = true,
+    val sleepTimerMinutes: Int = 0, // 0 = Off
+    val backgroundPlayEnabled: Boolean = false,
+    val selectedAudioTrack: String = "English 5.1",
+    val selectedSubtitleTrack: String = "English [CC]",
+    val subtitleSize: String = "Normal"
 ) {
     val progressPercent: Float
         get() = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f

@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
                             val context = androidx.compose.ui.platform.LocalContext.current
                             val playerViewModel: com.playme.player.feature.player.vm.PlayerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                             val playerEngine = remember(video.id) {
-                                com.playme.player.core.player.PlayMePlayerEngine(context)
+                                com.playme.player.core.player.UniversalPlayerEngine(context)
                             }
 
                             androidx.compose.runtime.DisposableEffect(playerEngine) {

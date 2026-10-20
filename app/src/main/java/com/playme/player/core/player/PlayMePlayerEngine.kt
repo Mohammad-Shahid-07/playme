@@ -36,6 +36,8 @@ class PlayMePlayerEngine(
     override val player: ExoPlayer?
         get() = exoPlayer
 
+    override val engineType: EngineType = EngineType.EXO
+
     init {
         buildPlayer(DecoderMode.HW)
     }

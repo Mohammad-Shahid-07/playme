@@ -54,6 +54,9 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
@@ -73,12 +76,15 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    // Media3 (ExoPlayer)
+    // Media3 (ExoPlayer - Hardware Accelerated Engine)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.session)
     implementation(libs.media3.common)
     implementation(libs.androidx.media)
+
+    // LibVLC Universal Codec Engine (100% Format/Codec Fallback)
+    implementation(libs.libvlc.all)
 
     // Room Database
     implementation(libs.androidx.room.runtime)

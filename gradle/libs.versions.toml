@@ -8,6 +8,7 @@ activityCompose = "1.9.3"
 composeBom = "2024.10.01"
 navigationCompose = "2.8.5"
 media3 = "1.5.1"
+libvlc = "3.6.5"
 room = "2.6.1"
 coil = "3.0.4"
 koin = "3.5.6"
@@ -34,6 +35,9 @@ media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "medi
 media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
 media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 androidx-media = { group = "androidx.media", name = "media", version = "1.7.0" }
+
+# LibVLC Universal Codec Engine
+libvlc-all = { group = "org.videolan.android", name = "libvlc-all", version.ref = "libvlc" }
 
 # Room
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

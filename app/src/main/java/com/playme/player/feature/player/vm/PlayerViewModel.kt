@@ -59,6 +59,11 @@ class PlayerViewModel : ViewModel() {
             override fun onError(errorMessage: String) {
                 showToast(errorMessage)
             }
+
+            override fun onEngineSwitched(engineType: com.playme.player.core.player.EngineType) {
+                val label = if (engineType == com.playme.player.core.player.EngineType.VLC) "Universal Codec Engine (LibVLC)" else "Hardware Engine (Media3)"
+                showToast("Using $label")
+            }
         })
         _state.value.currentVideo?.let { playerEngine.playVideo(it) }
     }

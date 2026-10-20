@@ -9,10 +9,13 @@ interface PlayerEngineListener {
     fun onPlaybackStateChanged(isPlaying: Boolean, isBuffering: Boolean)
     fun onSubtitleCue(cueText: String?)
     fun onError(errorMessage: String)
+    fun onEngineSwitched(engineType: EngineType) {}
 }
 
 interface PlayerEngineContract {
     val player: ExoPlayer?
+    val engineType: EngineType
+        get() = EngineType.EXO
     fun setListener(listener: PlayerEngineListener)
     fun playVideo(video: VideoItem)
     fun play()
@@ -22,5 +25,7 @@ interface PlayerEngineContract {
     fun setVolume(volume: Float)
     fun setMuted(muted: Boolean)
     fun setDecoderMode(mode: DecoderMode)
+    fun attachSurface(surfaceView: android.view.SurfaceView) {}
+    fun detachSurface() {}
     fun release()
 }

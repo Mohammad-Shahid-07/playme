@@ -103,7 +103,7 @@ fun PlayerScreen(
                 currentSubtitle = state.currentSubtitle,
                 videoSurface = videoSurface ?: {
                     VideoSurfaceView(
-                        player = viewModel.engine?.player,
+                        engine = viewModel.engine,
                         aspectRatioMode = state.aspectRatioMode
                     )
                 }

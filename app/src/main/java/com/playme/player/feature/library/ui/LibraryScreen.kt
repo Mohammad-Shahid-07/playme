@@ -50,7 +50,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel = viewModel(),
-    onVideoClick: (VideoItem) -> Unit = {},
+    onVideoClick: (VideoItem, List<VideoItem>) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
@@ -111,7 +111,7 @@ fun LibraryScreen(
                 items = state.continueWatching,
                 onItemClick = { item ->
                     val video = state.allVideos.firstOrNull { it.id == item.id || it.path == item.path }
-                    if (video != null) onVideoClick(video)
+                    if (video != null) onVideoClick(video, state.allVideos)
                 }
             )
         }
@@ -163,7 +163,7 @@ fun LibraryScreen(
                                 VideoCardItem(
                                     video = video,
                                     viewMode = ViewMode.GRID,
-                                    onClick = { onVideoClick(video) }
+                                    onClick = { onVideoClick(video, state.displayedVideos.ifEmpty { state.allVideos }) }
                                 )
                             }
                         }
@@ -181,7 +181,7 @@ fun LibraryScreen(
                                 VideoCardItem(
                                     video = video,
                                     viewMode = ViewMode.LIST,
-                                    onClick = { onVideoClick(video) }
+                                    onClick = { onVideoClick(video, state.displayedVideos.ifEmpty { state.allVideos }) }
                                 )
                             }
                         }

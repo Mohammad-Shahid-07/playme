@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.playme.player.core.model.MediaTrackInfo
 import com.playme.player.feature.player.model.AspectRatioMode
 import com.playme.player.feature.player.model.DecoderMode
 
@@ -46,6 +47,8 @@ fun PlayerSettingsSidebar(
     subtitleSize: String,
     volumeBoost: Int,
     brightnessPercent: Float,
+    availableAudioTracks: List<MediaTrackInfo> = emptyList(),
+    availableSubtitleTracks: List<MediaTrackInfo> = emptyList(),
     initialTab: String = "root",
     onAdjustAudioDelay: (Long) -> Unit,
     onAdjustSubtitleDelay: (Long) -> Unit,
@@ -99,47 +102,56 @@ fun PlayerSettingsSidebar(
         ) {
             Column(
                 modifier = Modifier
-                    .width(295.dp)
+                    .width(320.dp)
                     .fillMaxHeight()
-                    .background(Color(0xDF0A0D18))
-                    .border(width = 1.dp, color = Color(0x1AFFFFFF), shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
-                    .shadow(32.dp, spotColor = Color.Black)
-                    .clickable(enabled = false) {}
+                    .shadow(24.dp, RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
+                    .background(Color(0xF00C0E18))
+                    .border(1.dp, Color(0x1FFFFFFF), RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
             ) {
                 when (currentView) {
                     "root" -> {
-                        SettingsNavHeader(title = "Settings", onClose = onClose)
+                        SettingsNavHeader(title = "Player Settings", onClose = onClose)
                         SettingsRootView(
                             selectedAudio = selectedAudio,
+                            selectedSubtitle = selectedSubtitle,
                             audioDelayMs = audioDelayMs,
+                            subtitleDelayMs = subtitleDelayMs,
+                            decoderMode = decoderMode,
+                            aspectRatioMode = aspectRatioMode,
                             isDialogueClarity = isDialogueClarity,
                             volumeBoost = volumeBoost,
-                            selectedSubtitle = selectedSubtitle,
-                            subtitleDelayMs = subtitleDelayMs,
-                            playbackSpeed = playbackSpeed,
-                            decoderMode = decoderMode,
-                            sleepTimerMinutes = sleepTimerMinutes,
-                            backgroundPlay = backgroundPlay,
-                            aspectRatioMode = aspectRatioMode,
                             ambientGlow = isAmbientGlow,
                             brightnessPercent = brightnessPercent,
+                            sleepTimerMinutes = sleepTimerMinutes,
+                            backgroundPlay = backgroundPlay,
+                            playbackSpeed = playbackSpeed,
                             onNavigate = { currentView = it },
                             onToggleDialogueClarity = onToggleDialogueClarity,
                             onVolumeBoostChange = onVolumeBoostChange,
-                            onToggleBackgroundPlay = onToggleBackgroundPlay,
                             onToggleAmbientGlow = onToggleAmbientGlow,
-                            onBrightnessChange = onBrightnessChange
+                            onBrightnessChange = onBrightnessChange,
+                            onToggleBackgroundPlay = onToggleBackgroundPlay
                         )
                     }
 
                     "audio-track" -> {
+                        val audioChoices = if (availableAudioTracks.isNotEmpty()) {
+                            availableAudioTracks.map {
+                                ChoiceItem(
+                                    id = it.id,
+                                    title = it.name,
+                                    desc = it.language?.let { lang -> "Language: $lang" } ?: "Audio Stream"
+                                )
+                            }
+                        } else {
+                            listOf(
+                                ChoiceItem("default", "Default Audio", "Stereo / Surround Auto-detect")
+                            )
+                        }
+
                         SettingsChoiceSubView(
                             title = "Audio Track",
-                            items = listOf(
-                                ChoiceItem("English 5.1", "English", "Dolby Digital 5.1 (Surround) · Default"),
-                                ChoiceItem("Hindi Stereo", "Hindi", "Stereo AAC 320 kbps"),
-                                ChoiceItem("Japanese DTS", "Japanese", "Original DTS 5.1 Surround")
-                            ),
+                            items = audioChoices,
                             selectedId = selectedAudio,
                             onSelect = { onSelectAudioTrack(it); currentView = "root" },
                             onBack = { currentView = "root" }
@@ -158,13 +170,24 @@ fun PlayerSettingsSidebar(
                     }
 
                     "subtitles" -> {
+                        val subChoices = mutableListOf(
+                            ChoiceItem("none", "Off", "Captions disabled")
+                        )
+                        if (availableSubtitleTracks.isNotEmpty()) {
+                            availableSubtitleTracks.forEach {
+                                subChoices.add(
+                                    ChoiceItem(
+                                        id = it.id,
+                                        title = it.name,
+                                        desc = it.language?.let { lang -> "Language: $lang" } ?: "Embedded Subtitle"
+                                    )
+                                )
+                            }
+                        }
+
                         SettingsChoiceSubView(
                             title = "Subtitles",
-                            items = listOf(
-                                ChoiceItem("Off", "Off", "Captions disabled"),
-                                ChoiceItem("English [CC]", "English [CC]", "Embedded SubRip"),
-                                ChoiceItem("Spanish", "Spanish", "Embedded SubRip")
-                            ),
+                            items = subChoices,
                             selectedId = selectedSubtitle,
                             onSelect = { onSelectSubtitleTrack(it); currentView = "root" },
                             onBack = { currentView = "root" },
@@ -212,9 +235,8 @@ fun PlayerSettingsSidebar(
                         SettingsChoiceSubView(
                             title = "Hardware Decoder",
                             items = listOf(
-                                ChoiceItem("HW+", "HW+ (Hardware Acceleration Plus)", "Custom optimized GPU rendering · Recommended"),
-                                ChoiceItem("HW", "HW (Standard Hardware)", "Android native MediaCodec acceleration"),
-                                ChoiceItem("SW", "SW (Software Rendering)", "CPU software fallback for rare unsupported codecs")
+                                ChoiceItem("HW", "HW (Media3 ExoPlayer)", "Native hardware decoding"),
+                                ChoiceItem("SW", "SW (Universal LibVLC)", "FFmpeg software fallback for all formats")
                             ),
                             selectedId = decoderMode.name,
                             onSelect = {

@@ -67,6 +67,13 @@ fun PlayerScreen(
         }
     }
 
+    // Android System Volume & Window Brightness Sync
+    PlayerSystemSyncEffect(
+        viewModel = viewModel,
+        brightnessPercent = state.brightnessPercent,
+        volumePercent = state.volumePercent
+    )
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -104,7 +111,8 @@ fun PlayerScreen(
                 videoSurface = videoSurface ?: {
                     VideoSurfaceView(
                         engine = viewModel.engine,
-                        aspectRatioMode = state.aspectRatioMode
+                        aspectRatioMode = state.aspectRatioMode,
+                        activeEngineType = state.activeEngineType
                     )
                 }
             )
@@ -120,6 +128,12 @@ fun PlayerScreen(
             onSelectBoostSpeed = { speed -> viewModel.onAction(PlayerAction.SetSpeedBoostValue(speed)) },
             showLockedAlert = state.isLocked && state.activeGesture != GestureType.NONE,
             boostSpeed = state.boostSpeed
+        )
+
+        // 3b. Buffering Indicator (only after 1.5s of stalling)
+        PlayerBufferingOverlay(
+            isBuffering = state.isBuffering,
+            modifier = Modifier.align(Alignment.Center)
         )
 
         // 4. Top HUD Bar
@@ -171,7 +185,6 @@ fun PlayerScreen(
             PlayerBottomBar(
                 currentPositionMs = state.currentPositionMs,
                 durationMs = state.durationMs,
-                bufferedPositionMs = state.bufferedPositionMs,
                 isPlaying = state.isPlaying,
                 speed = state.playbackSpeed,
                 onSeekTo = { posMs -> viewModel.onAction(PlayerAction.SeekTo(posMs)) },
@@ -241,6 +254,8 @@ fun PlayerScreen(
             subtitleSize = state.subtitleSize,
             volumeBoost = state.volumeBoostPercent,
             brightnessPercent = state.brightnessPercent,
+            availableAudioTracks = state.availableAudioTracks,
+            availableSubtitleTracks = state.availableSubtitleTracks,
             initialTab = when (state.activeSettingsTab) {
                 com.playme.player.feature.player.model.SettingsTab.SUBTITLES -> "subtitles"
                 com.playme.player.feature.player.model.SettingsTab.AUDIO -> "audio"

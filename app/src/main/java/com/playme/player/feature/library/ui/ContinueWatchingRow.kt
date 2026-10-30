@@ -2,7 +2,6 @@ package com.playme.player.feature.library.ui
 
 import android.graphics.Bitmap
 import android.net.Uri
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,8 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -160,12 +157,11 @@ private fun ContinueWatchingCard(
                 .background(Color(0xFF11131E))
                 .border(1.dp, Color(0x14FFFFFF), RoundedCornerShape(9.dp))
         ) {
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap!!.asImageBitmap(),
-                    contentDescription = item.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
+            val thumb = bitmap
+            if (thumb != null) {
+                VideoThumbnailContent(
+                    bitmap = thumb,
+                    contentDescription = item.title
                 )
             } else {
                 Box(

@@ -1,0 +1,102 @@
+package com.playme.player.core.player
+
+import androidx.annotation.OptIn
+import androidx.media3.common.C
+import androidx.media3.common.TrackSelectionOverride
+import androidx.media3.common.Tracks
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import com.playme.player.core.model.MediaTrackInfo
+import com.playme.player.core.model.TrackType
+
+@OptIn(UnstableApi::class)
+object ExoPlayerTrackHelper {
+
+    fun extractTracks(tracks: Tracks): Pair<List<MediaTrackInfo>, List<MediaTrackInfo>> {
+        val audioList = mutableListOf<MediaTrackInfo>()
+        val subList = mutableListOf<MediaTrackInfo>()
+
+        for (group in tracks.groups) {
+            val trackType = group.type
+            val mediaTrackGroup = group.mediaTrackGroup
+            for (i in 0 until mediaTrackGroup.length) {
+                val format = mediaTrackGroup.getFormat(i)
+                val isSelected = group.isTrackSelected(i)
+                val label = format.label ?: format.language ?: "Track ${i + 1}"
+                val id = format.id ?: "$trackType-$i"
+
+                if (trackType == C.TRACK_TYPE_AUDIO) {
+                    audioList.add(
+                        MediaTrackInfo(
+                            id = id,
+                            name = label,
+                            language = format.language,
+                            type = TrackType.AUDIO,
+                            isSelected = isSelected
+                        )
+                    )
+                } else if (trackType == C.TRACK_TYPE_TEXT) {
+                    subList.add(
+                        MediaTrackInfo(
+                            id = id,
+                            name = label,
+                            language = format.language,
+                            type = TrackType.SUBTITLE,
+                            isSelected = isSelected
+                        )
+                    )
+                }
+            }
+        }
+        return Pair(audioList, subList)
+    }
+
+    fun selectAudioTrack(selector: DefaultTrackSelector?, player: ExoPlayer?, trackId: String) {
+        val currentTracks = player?.currentTracks ?: return
+        val defaultSelector = selector ?: return
+
+        for (group in currentTracks.groups) {
+            if (group.type == C.TRACK_TYPE_AUDIO) {
+                val mediaTrackGroup = group.mediaTrackGroup
+                for (i in 0 until mediaTrackGroup.length) {
+                    val format = mediaTrackGroup.getFormat(i)
+                    val id = format.id ?: "${group.type}-$i"
+                    if (id == trackId) {
+                        defaultSelector.parameters = defaultSelector.buildUponParameters()
+                            .setOverrideForType(TrackSelectionOverride(mediaTrackGroup, i))
+                            .build()
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    fun selectSubtitleTrack(selector: DefaultTrackSelector?, player: ExoPlayer?, trackId: String) {
+        val defaultSelector = selector ?: return
+        if (trackId == "none" || trackId == "-1") {
+            defaultSelector.parameters = defaultSelector.buildUponParameters()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+            return
+        }
+        val currentTracks = player?.currentTracks ?: return
+        for (group in currentTracks.groups) {
+            if (group.type == C.TRACK_TYPE_TEXT) {
+                val mediaTrackGroup = group.mediaTrackGroup
+                for (i in 0 until mediaTrackGroup.length) {
+                    val format = mediaTrackGroup.getFormat(i)
+                    val id = format.id ?: "${group.type}-$i"
+                    if (id == trackId) {
+                        defaultSelector.parameters = defaultSelector.buildUponParameters()
+                            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                            .setOverrideForType(TrackSelectionOverride(mediaTrackGroup, i))
+                            .build()
+                        return
+                    }
+                }
+            }
+        }
+    }
+}

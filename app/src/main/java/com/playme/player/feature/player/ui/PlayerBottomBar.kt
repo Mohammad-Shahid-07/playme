@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,7 +48,6 @@ import androidx.compose.ui.unit.sp
 fun PlayerBottomBar(
     currentPositionMs: Long,
     durationMs: Long,
-    bufferedPositionMs: Long,
     isPlaying: Boolean,
     speed: Float,
     onSeekTo: (Long) -> Unit,
@@ -59,7 +59,6 @@ fun PlayerBottomBar(
     modifier: Modifier = Modifier
 ) {
     val progress = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
-    val bufferProgress = if (durationMs > 0) (bufferedPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
 
     Box(
         modifier = modifier
@@ -85,7 +84,6 @@ fun PlayerBottomBar(
                 currentPositionMs = currentPositionMs,
                 durationMs = durationMs,
                 progress = progress,
-                bufferProgress = bufferProgress,
                 onSeek = { frac -> onSeekTo((frac * durationMs).toLong()) }
             )
 
@@ -182,10 +180,18 @@ private fun TimelineScrubberRow(
     currentPositionMs: Long,
     durationMs: Long,
     progress: Float,
-    bufferProgress: Float,
     onSeek: (Float) -> Unit
 ) {
     var widthPx by remember { mutableFloatStateOf(1f) }
+    // While dragging, follow the finger locally and only commit the seek on
+    // release. Seeking on every pixel makes playback stutter.
+    var scrubProgress by remember { mutableStateOf<Float?>(null) }
+    val displayProgress = scrubProgress ?: progress
+    val displayPositionMs = if (scrubProgress != null && durationMs > 0L) {
+        (displayProgress * durationMs).toLong()
+    } else {
+        currentPositionMs
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -193,7 +199,7 @@ private fun TimelineScrubberRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = formatTime(currentPositionMs),
+            text = formatTime(displayPositionMs),
             color = Color(0xFF94A3B8),
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
@@ -212,9 +218,18 @@ private fun TimelineScrubberRow(
                     }
                 }
                 .pointerInput(Unit) {
-                    detectDragGestures { change, _ ->
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            scrubProgress = (offset.x / widthPx).coerceIn(0f, 1f)
+                        },
+                        onDragEnd = {
+                            scrubProgress?.let { onSeek(it) }
+                            scrubProgress = null
+                        },
+                        onDragCancel = { scrubProgress = null }
+                    ) { change, _ ->
                         change.consume()
-                        onSeek((change.position.x / widthPx).coerceIn(0f, 1f))
+                        scrubProgress = (change.position.x / widthPx).coerceIn(0f, 1f)
                     }
                 },
             contentAlignment = Alignment.CenterStart
@@ -228,19 +243,10 @@ private fun TimelineScrubberRow(
                     .background(Color(0x26FFFFFF))
             )
 
-            // Buffer Progress
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(bufferProgress)
-                    .height(3.5.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x40FFFFFF))
-            )
-
             // Active Progress
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress)
+                    .fillMaxWidth(displayProgress)
                     .height(3.5.dp)
                     .clip(CircleShape)
                     .background(
@@ -251,7 +257,7 @@ private fun TimelineScrubberRow(
             )
         }
 
-        val remainingMs = (durationMs - currentPositionMs).coerceAtLeast(0L)
+        val remainingMs = (durationMs - displayPositionMs).coerceAtLeast(0L)
         Text(
             text = "-${formatTime(remainingMs)}",
             color = Color(0xFF94A3B8),

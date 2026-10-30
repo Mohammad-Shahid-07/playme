@@ -64,10 +64,9 @@ fun VideoStageCanvas(
                 )
         )
 
-        // 2. Video Surface or Fallback Thumbnail Canvas
-        if (videoSurface != null) {
-            videoSurface()
-        } else if (video != null) {
+        // 2. Cached poster frame. Shown instantly on open so the transition
+        //    never feels like a black wait while codecs spin up.
+        if (video != null) {
             VideoThumbnailImage(
                 video = video,
                 contentScale = contentScale,
@@ -75,7 +74,10 @@ fun VideoStageCanvas(
             )
         }
 
-        // 3. Top & Bottom Cinematic Gradient Scrims (Fade with controls)
+        // 3. Video Surface (transparent until the first decoded frame)
+        videoSurface?.invoke()
+
+        // 4. Top & Bottom Cinematic Gradient Scrims (Fade with controls)
         AnimatedVisibility(
             visible = isControlsVisible,
             enter = fadeIn(),
@@ -120,24 +122,25 @@ fun VideoStageCanvas(
             )
         }
 
-        // 4. Live On-Screen Subtitle Pill
-        val subtitle = currentSubtitle ?: "[ Atmospheric synth swells — Prepare for orbital jump ]"
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = if (isControlsVisible) 110.dp else 44.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(Color(0xDD0C0E18))
-                .border(1.dp, Color(0x33757BF8), RoundedCornerShape(999.dp))
-                .padding(horizontal = 18.dp, vertical = 7.dp)
-        ) {
-            Text(
-                text = subtitle,
-                color = Color(0xFFF8FAFC),
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                letterSpacing = 0.3.sp
-            )
+        // 5. Live On-Screen Subtitle Pill
+        if (!currentSubtitle.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = if (isControlsVisible) 110.dp else 44.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color(0xDD0C0E18))
+                    .border(1.dp, Color(0x33757BF8), RoundedCornerShape(999.dp))
+                    .padding(horizontal = 18.dp, vertical = 7.dp)
+            ) {
+                Text(
+                    text = currentSubtitle,
+                    color = Color(0xFFF8FAFC),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.3.sp
+                )
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.playme.player.feature.player.model
 
+import com.playme.player.core.model.MediaTrackInfo
 import com.playme.player.core.model.VideoItem
 
 enum class AspectRatioMode(val label: String) {
@@ -28,6 +29,7 @@ data class PlayerState(
     val playlist: List<VideoItem> = emptyList(),
     val currentIndex: Int = 0,
     val isPlaying: Boolean = true,
+    val isBuffering: Boolean = false,
     val isMuted: Boolean = false,
     val isLocked: Boolean = false,
     val currentPositionMs: Long = 0L,
@@ -36,6 +38,7 @@ data class PlayerState(
     val playbackSpeed: Float = 1.0f,
     val aspectRatioMode: AspectRatioMode = AspectRatioMode.BEST_FIT,
     val decoderMode: DecoderMode = DecoderMode.HW,
+    val activeEngineType: com.playme.player.core.player.EngineType = com.playme.player.core.player.EngineType.EXO,
     val isControlsVisible: Boolean = true,
     val isAbLoopActive: Boolean = false,
     val abLoopStartMs: Long? = null,
@@ -64,8 +67,10 @@ data class PlayerState(
     val ambientGlowEnabled: Boolean = true,
     val sleepTimerMinutes: Int = 0, // 0 = Off
     val backgroundPlayEnabled: Boolean = false,
-    val selectedAudioTrack: String = "English 5.1",
-    val selectedSubtitleTrack: String = "English [CC]",
+    val availableAudioTracks: List<MediaTrackInfo> = emptyList(),
+    val availableSubtitleTracks: List<MediaTrackInfo> = emptyList(),
+    val selectedAudioTrack: String = "Default Audio",
+    val selectedSubtitleTrack: String = "None",
     val subtitleSize: String = "Normal"
 ) {
     val progressPercent: Float

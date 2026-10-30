@@ -8,10 +8,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,25 +41,28 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             PlayMeTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = PlayMeColors.Workbench
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(PlayMeColors.Workbench)
                 ) {
                     var currentTab by remember { mutableStateOf(MainNavTab.VIDEO) }
                     var activeVideo by remember { mutableStateOf<com.playme.player.core.model.VideoItem?>(null) }
+                    var activePlaylist by remember { mutableStateOf<List<com.playme.player.core.model.VideoItem>>(emptyList()) }
+                    val playerViewModel: com.playme.player.feature.player.vm.PlayerViewModel =
+                        androidx.lifecycle.viewmodel.compose.viewModel()
 
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        val video = activeVideo
-                        if (video != null) {
+                    val video = activeVideo
+                    if (video != null) {
+                        key(video.id) {
                             val context = androidx.compose.ui.platform.LocalContext.current
-                            val playerViewModel: com.playme.player.feature.player.vm.PlayerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                             val playerEngine = remember(video.id) {
                                 com.playme.player.core.player.UniversalPlayerEngine(context)
                             }
 
-                            androidx.compose.runtime.DisposableEffect(playerEngine) {
+                            androidx.compose.runtime.DisposableEffect(video.id, playerEngine) {
                                 playerViewModel.attachEngine(playerEngine)
-                                playerViewModel.setInitialVideo(video)
+                                playerViewModel.setInitialVideo(video, activePlaylist.ifEmpty { listOf(video) })
                                 onDispose {
                                     playerEngine.release()
                                 }
@@ -71,28 +75,30 @@ class MainActivity : ComponentActivity() {
                                     activeVideo = null
                                 }
                             )
-                        } else {
-                            when (currentTab) {
-                                MainNavTab.VIDEO -> {
-                                    LibraryScreen(
-                                        onVideoClick = { clickedVideo ->
-                                            activeVideo = clickedVideo
-                                        }
-                                    )
-                                }
-                                else -> {
-                                    MainTabPlaceholderView(tab = currentTab)
-                                }
-                            }
-
-                            // Floating Glass Bottom Navigation Dock
-                            BottomNavBar(
-                                activeTab = currentTab,
-                                onTabSelected = { currentTab = it },
-                                onBigPlayClick = { /* Quick play */ },
-                                modifier = Modifier.align(Alignment.BottomCenter)
-                            )
                         }
+                    } else {
+                        when (currentTab) {
+                            MainNavTab.VIDEO -> {
+                                LibraryScreen(
+                                    onVideoClick = { clickedVideo, playlist ->
+                                        activePlaylist = playlist
+                                        playerViewModel.prepareVideo(clickedVideo, playlist)
+                                        activeVideo = clickedVideo
+                                    }
+                                )
+                            }
+                            else -> {
+                                MainTabPlaceholderView(tab = currentTab)
+                            }
+                        }
+
+                        // Floating Glass Bottom Navigation Dock
+                        BottomNavBar(
+                            activeTab = currentTab,
+                            onTabSelected = { currentTab = it },
+                            onBigPlayClick = { /* Quick play */ },
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
                     }
                 }
             }
@@ -106,6 +112,10 @@ class MainActivity : ComponentActivity() {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO)
                 != PackageManager.PERMISSION_GRANTED) {
                 permissionsToRequest.add(Manifest.permission.READ_MEDIA_VIDEO)
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
             }
         } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)

@@ -13,8 +13,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 object ThumbnailManager {
+
+    // Bump when the thumbnail algorithm changes so stale (distorted) cache
+    // entries from previous builds are ignored.
+    private const val CACHE_VERSION = "v2"
+
+    private fun cacheKey(id: String) = "${CACHE_VERSION}_$id"
 
     // 25% of max memory for instant in-memory bitmap cache
     private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024).toInt()
@@ -26,7 +34,7 @@ object ThumbnailManager {
         }
     }
 
-    fun getFromMemory(id: String): Bitmap? = memoryCache.get(id)
+    fun getFromMemory(id: String): Bitmap? = memoryCache.get(cacheKey(id))
 
     suspend fun loadThumbnail(
         context: Context,
@@ -37,15 +45,16 @@ object ThumbnailManager {
         targetHeight: Int = 240
     ): Bitmap? = withContext(Dispatchers.IO) {
         // 1. Check memory cache first
-        memoryCache.get(videoId)?.let { return@withContext it }
+        val key = cacheKey(videoId)
+        memoryCache.get(key)?.let { return@withContext it }
 
         // 2. Check disk cache
-        val diskCacheFile = File(context.cacheDir, "thumb_$videoId.jpg")
+        val diskCacheFile = File(context.cacheDir, "thumb_${CACHE_VERSION}_$videoId.jpg")
         if (diskCacheFile.exists()) {
             try {
                 val bitmap = android.graphics.BitmapFactory.decodeFile(diskCacheFile.absolutePath)
                 if (bitmap != null) {
-                    memoryCache.put(videoId, bitmap)
+                    memoryCache.put(key, bitmap)
                     return@withContext bitmap
                 }
             } catch (_: Exception) {}
@@ -88,14 +97,25 @@ object ThumbnailManager {
             } catch (_: Exception) {}
         }
 
-        // 5. Downsample & cache to disk/memory
+        // 5. Downsample preserving the source aspect ratio. Forcing a fixed
+        //    target size here squashed portrait (9:16) videos into a 16:9 box.
         resultBitmap?.let { orig ->
-            val scaled = if (orig.width > targetWidth || orig.height > targetHeight) {
-                Bitmap.createScaledBitmap(orig, targetWidth, targetHeight, true)
+            val scale = max(
+                targetWidth.toFloat() / orig.width,
+                targetHeight.toFloat() / orig.height
+            ).coerceAtMost(1f)
+
+            val scaled = if (scale < 1f) {
+                Bitmap.createScaledBitmap(
+                    orig,
+                    (orig.width * scale).roundToInt().coerceAtLeast(1),
+                    (orig.height * scale).roundToInt().coerceAtLeast(1),
+                    true
+                )
             } else {
                 orig
             }
-            memoryCache.put(videoId, scaled)
+            memoryCache.put(key, scaled)
 
             // Save to disk cache asynchronously
             try {

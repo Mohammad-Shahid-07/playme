@@ -25,3 +25,6 @@ vlc-android-master.zip
 .DS_Store
 Thumbs.db
 *.hprof
+
+# Local AI assistant notes
+.workbuddy-ai/

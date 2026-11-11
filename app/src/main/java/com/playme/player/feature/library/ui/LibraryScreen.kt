@@ -5,30 +5,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.VideocamOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.playme.player.core.model.VideoItem
 import com.playme.player.core.model.VideoSubTab
-import com.playme.player.core.model.ViewMode
 import com.playme.player.feature.library.model.LibraryAction
 import com.playme.player.feature.library.vm.LibraryViewModel
 import kotlinx.coroutines.launch
@@ -54,11 +45,13 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
-    val pagerState = rememberPagerState(initialPage = 0) { 2 }
-    val coroutineScope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(initialPage = 0) { PAGE_COUNT }
+    val scope = rememberCoroutineScope()
+    val currentTab = VideoSubTab.entries[pagerState.currentPage.coerceIn(0, PAGE_COUNT - 1)]
 
-    // Direct single source of truth from pagerState - NO fighting loops!
-    val currentSubTab = if (pagerState.currentPage == 0) VideoSubTab.VIDEOS else VideoSubTab.FOLDERS
+    // Files copied while the app was in the background (or into a .nomedia
+    // folder) are picked up as soon as the library is visible again.
+    LibraryResumeRefresh { viewModel.onAction(LibraryAction.RefreshVideos) }
 
     Column(
         modifier = modifier
@@ -68,183 +61,140 @@ fun LibraryScreen(
             .padding(horizontal = 10.dp)
             .padding(top = 4.dp)
     ) {
-        // 1. Home App Brand Top Bar
         LibraryTopBar(
             searchQuery = state.searchQuery,
             onSearchQueryChange = { viewModel.onAction(LibraryAction.SetSearchQuery(it)) }
         )
 
-        // 2. Permission Banner (Deep Storage)
-        PermissionBanner(hasDeepAccess = state.hasDeepScanAccess)
+        LibraryScanIndicator(isScanning = state.isScanning)
 
-        // 3. Folder Drill-Down Back Header
-        state.selectedFolder?.let { folder ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0x14FFFFFF))
-                    .clickable { viewModel.onAction(LibraryAction.SelectFolder(null)) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "Back to folders",
-                    tint = Color(0xFF818CF8),
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = folder.name,
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
+        val selectedSeries = state.selectedSeries
+        if (selectedSeries != null) {
+            SeriesDetailView(
+                series = selectedSeries,
+                onBack = { viewModel.onAction(LibraryAction.SelectSeries(null)) },
+                onEpisodeClick = { episode ->
+                    onVideoClick(episode.video, selectedSeries.episodes.map { it.video })
+                }
+            )
+            return@Column
         }
 
-        // 4. Continue Watching Carousel (Persistent across both tabs)
+        state.selectedFolder?.let { folder ->
+            FolderBackHeader(
+                name = folder.name,
+                onClick = { viewModel.onAction(LibraryAction.SelectFolder(null)) }
+            )
+        }
+
         if (state.searchQuery.isEmpty() && state.selectedFolder == null) {
             ContinueWatchingRow(
                 items = state.continueWatching,
                 onItemClick = { item ->
                     val video = state.allVideos.firstOrNull { it.id == item.id || it.path == item.path }
                     if (video != null) onVideoClick(video, state.allVideos)
-                }
+                },
+                onClear = { viewModel.onAction(LibraryAction.ClearWatchHistory) }
             )
         }
 
-        // 5. Video Sub-Nav Bar (Videos / Folders, Sort, View mode)
         VideoSubNavBar(
-            activeTab = currentSubTab,
+            activeTab = currentTab,
             sortOption = state.sortOption,
             viewMode = state.viewMode,
             onTabChange = { tab ->
-                val target = if (tab == VideoSubTab.VIDEOS) 0 else 1
-                coroutineScope.launch {
-                    pagerState.animateScrollToPage(target)
-                }
+                scope.launch { pagerState.animateScrollToPage(tab.ordinal) }
             },
             onSortChange = { viewModel.onAction(LibraryAction.SetSortOption(it)) },
             onViewModeToggle = { viewModel.onAction(LibraryAction.ToggleViewMode) }
         )
 
-        // 6. Smooth Swipable Animated Pager with Zero Recomposition Jitter
         if (state.isLoading) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color(0xFF818CF8), strokeWidth = 2.5.dp)
-            }
+            LoadingState(modifier = Modifier.weight(1f))
         } else {
+            CompositionLocalProvider(
+                LocalListScrolling provides pagerState.isScrollInProgress
+            ) {
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 userScrollEnabled = state.selectedFolder == null,
                 key = { it }
             ) { page ->
-                if (page == 0) {
-                    // Page 0: Videos Feed
-                    if (state.displayedVideos.isEmpty()) {
-                        EmptyVideosView()
-                    } else if (state.viewMode == ViewMode.GRID) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(
-                                items = state.displayedVideos,
-                                key = { it.id },
-                                contentType = { "video_grid" }
-                            ) { video ->
-                                VideoCardItem(
-                                    video = video,
-                                    viewMode = ViewMode.GRID,
-                                    onClick = { onVideoClick(video, state.displayedVideos.ifEmpty { state.allVideos }) }
-                                )
-                            }
+                when (page) {
+                    0 -> LibraryVideosPage(
+                        videos = state.displayedVideos,
+                        viewMode = state.viewMode,
+                        onVideoClick = { video ->
+                            onVideoClick(video, state.displayedVideos.ifEmpty { state.allVideos })
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(
-                                items = state.displayedVideos,
-                                key = { it.id },
-                                contentType = { "video_list" }
-                            ) { video ->
-                                VideoCardItem(
-                                    video = video,
-                                    viewMode = ViewMode.LIST,
-                                    onClick = { onVideoClick(video, state.displayedVideos.ifEmpty { state.allVideos }) }
-                                )
-                            }
+                    )
+                    1 -> LibraryFoldersPage(
+                        folders = state.folders,
+                        viewMode = state.viewMode,
+                        onFolderClick = { folder ->
+                            viewModel.onAction(LibraryAction.SelectFolder(folder))
+                            scope.launch { pagerState.animateScrollToPage(0) }
                         }
-                    }
-                } else {
-                    // Page 1: Folders Feed
-                    if (state.viewMode == ViewMode.GRID) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            items(
-                                items = state.folders,
-                                key = { it.id },
-                                contentType = { "folder_grid" }
-                            ) { folder ->
-                                FolderCardItem(
-                                    folder = folder,
-                                    viewMode = ViewMode.GRID,
-                                    onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
-                                )
-                            }
+                    )
+                    else -> LibrarySeriesPage(
+                        series = state.displayedSeries,
+                        viewMode = state.viewMode,
+                        onSeriesClick = { series ->
+                            viewModel.onAction(LibraryAction.SelectSeries(series))
                         }
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(top = 4.dp, bottom = 96.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(
-                                items = state.folders,
-                                key = { it.id },
-                                contentType = { "folder_list" }
-                            ) { folder ->
-                                FolderCardItem(
-                                    folder = folder,
-                                    viewMode = ViewMode.LIST,
-                                    onClick = { viewModel.onAction(LibraryAction.SelectFolder(folder)) }
-                                )
-                            }
-                        }
-                    }
+                    )
                 }
+            }
             }
         }
     }
 }
 
 @Composable
-private fun EmptyVideosView() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+private fun FolderBackHeader(name: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0x14FFFFFF))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            contentDescription = "Back to folders",
+            tint = Color(0xFF818CF8),
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = name,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
+private fun LoadingState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                imageVector = Icons.Rounded.VideocamOff,
-                contentDescription = null,
-                tint = Color(0x61FFFFFF),
-                modifier = Modifier.size(42.dp)
+            CircularProgressIndicator(color = Color(0xFF818CF8), strokeWidth = 2.5.dp)
+            Text(
+                text = "Scanning storage",
+                color = Color(0xFF8E95A5),
+                fontSize = 11.5.sp,
+                modifier = Modifier.padding(top = 12.dp)
             )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(text = "No videos found", color = Color(0xFF8E95A5), fontSize = 13.5.sp)
         }
     }
 }
+
+private const val PAGE_COUNT = 3

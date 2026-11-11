@@ -1,31 +1,34 @@
 package com.playme.player.feature.library.ui
 
 import android.graphics.Bitmap
-import android.os.Build
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import com.playme.player.core.model.VideoItem
 import com.playme.player.core.scanner.ThumbnailManager
+import kotlinx.coroutines.delay
+
+/** Small debounce so a fling does not queue a decode for every row. */
+private const val THUMBNAIL_SETTLE_MS = 120L
 
 @Composable
 fun VideoThumbnailImage(
@@ -33,43 +36,68 @@ fun VideoThumbnailImage(
     targetWidth: Int = 360,
     targetHeight: Int = 240,
     contentScale: ContentScale = ContentScale.Crop,
+    showPlaceholderGlyph: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isScrolling = LocalListScrolling.current
     var bitmap by remember(video.id) {
         mutableStateOf<Bitmap?>(ThumbnailManager.getFromMemory(video.id))
     }
 
-    LaunchedEffect(video.id) {
-        if (bitmap == null) {
-            bitmap = ThumbnailManager.loadThumbnail(
-                context = context,
-                videoId = video.id,
-                uri = video.uri,
-                filePath = video.path,
-                targetWidth = targetWidth,
-                targetHeight = targetHeight
-            )
-        }
+    LaunchedEffect(video.id, isScrolling) {
+        if (bitmap != null || isScrolling) return@LaunchedEffect
+        // During a fling the row is disposed before this fires, so fast
+        // scrolling never pays for thumbnails the user scrolled past.
+        delay(THUMBNAIL_SETTLE_MS)
+        bitmap = ThumbnailManager.loadThumbnail(
+            context = context,
+            videoId = video.id,
+            uri = video.uri,
+            filePath = video.path,
+            durationMs = video.durationMs,
+            targetWidth = targetWidth,
+            targetHeight = targetHeight
+        )
     }
 
-    Crossfade(
-        targetState = bitmap,
-        animationSpec = tween(120),
-        modifier = modifier.fillMaxSize(),
-        label = "thumb_crossfade"
-    ) { currentBitmap ->
-        if (currentBitmap != null) {
+    Box(modifier = modifier.fillMaxSize()) {
+        val current = bitmap
+        if (current != null) {
             VideoThumbnailContent(
-                bitmap = currentBitmap,
+                bitmap = current,
                 contentDescription = video.title,
                 contentScale = contentScale
             )
         } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF11131E))
+            ThumbnailPlaceholder(showGlyph = showPlaceholderGlyph)
+        }
+    }
+}
+
+/**
+ * Some containers (10-bit MKV on certain decoders) cannot produce a frame
+ * quickly, or at all. A dim film glyph reads as intentional; an empty
+ * rectangle reads as broken.
+ */
+@Composable
+private fun ThumbnailPlaceholder(showGlyph: Boolean = true) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFF151827), Color(0xFF0D0F1A))
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (showGlyph) {
+            Icon(
+                imageVector = Icons.Rounded.Movie,
+                contentDescription = null,
+                tint = Color(0x26FFFFFF),
+                modifier = Modifier.fillMaxSize(0.26f)
             )
         }
     }
@@ -94,17 +122,12 @@ fun VideoThumbnailContent(
 
     Box(modifier = modifier.fillMaxSize().background(Color(0xFF0A0B12))) {
         if (isPortrait) {
-            val backdrop = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Modifier
-                    .fillMaxSize()
-                    .scale(1.2f)
-                    .blur(18.dp)
-                    .alpha(0.55f)
-            } else {
-                Modifier
-                    .fillMaxSize()
-                    .alpha(0.32f)
-            }
+            // A blurred backdrop is a RenderEffect per item, which visibly
+            // stutters while scrolling; a scaled copy reads the same.
+            val backdrop = Modifier
+                .fillMaxSize()
+                .scale(1.2f)
+                .alpha(0.35f)
             Image(
                 bitmap = image,
                 contentDescription = null,

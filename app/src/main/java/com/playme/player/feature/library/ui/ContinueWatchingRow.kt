@@ -44,6 +44,7 @@ import com.playme.player.core.scanner.ThumbnailManager
 fun ContinueWatchingRow(
     items: List<ContinueWatchingItem>,
     onItemClick: (ContinueWatchingItem) -> Unit,
+    onClear: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     if (items.isEmpty()) return
@@ -99,7 +100,7 @@ fun ContinueWatchingRow(
                 color = Color(0xFF8E95A5),
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.Normal,
-                modifier = Modifier.clickable { /* Clear history */ }
+                modifier = Modifier.clickable(onClick = onClear)
             )
         }
 

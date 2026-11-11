@@ -80,6 +80,11 @@ fun VideoSubNavBar(
                     isActive = activeTab == VideoSubTab.FOLDERS,
                     onClick = { onTabChange(VideoSubTab.FOLDERS) }
                 )
+                SubNavTabButton(
+                    label = "Series",
+                    isActive = activeTab == VideoSubTab.SERIES,
+                    onClick = { onTabChange(VideoSubTab.SERIES) }
+                )
             }
 
             // Right: Sort & View Mode Controls (gap: 12px)
@@ -165,7 +170,11 @@ fun VideoSubNavBar(
 
         // 2. Section Header: "TODAY" or "DEVICE FOLDERS" (9.5px, bold, uppercase, #64748B)
         Text(
-            text = if (activeTab == VideoSubTab.VIDEOS) "TODAY" else "DEVICE FOLDERS",
+            text = when (activeTab) {
+                VideoSubTab.VIDEOS -> "TODAY"
+                VideoSubTab.FOLDERS -> "DEVICE FOLDERS"
+                VideoSubTab.SERIES -> "AUTO-GROUPED SERIES"
+            },
             color = Color(0xFF64748B),
             fontSize = 9.5.sp,
             fontWeight = FontWeight.Bold,

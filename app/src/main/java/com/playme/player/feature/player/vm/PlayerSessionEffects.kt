@@ -24,6 +24,7 @@ class PlayerSessionEffects(
     private var autoHideJob: Job? = null
     private var sleepTimerJob: Job? = null
     private var seekFlashJob: Job? = null
+    private var toastJob: Job? = null
 
     fun resetControlsTimer() {
         autoHideJob?.cancel()
@@ -35,8 +36,9 @@ class PlayerSessionEffects(
     }
 
     fun showToast(message: String) {
+        toastJob?.cancel()
         state.update { it.copy(toastMessage = message) }
-        scope.launch {
+        toastJob = scope.launch {
             delay(TOAST_DURATION_MS)
             state.update { if (it.toastMessage == message) it.copy(toastMessage = null) else it }
         }

@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.playme.player.core.util.formatDuration
 import kotlin.math.roundToInt
 
 private val PREVIEW_WIDTH = 140.dp
@@ -51,12 +53,14 @@ fun TimelineScrubberRow(
     onSeek: (Float) -> Unit
 ) {
     var widthPx by remember { mutableFloatStateOf(1f) }
-    var scrubProgress by remember { mutableStateOf<Float?>(null) }
-    val displayProgress = scrubProgress ?: progress
-    val displayPositionMs = if (scrubProgress != null && durationMs > 0L) {
-        (displayProgress * durationMs).toLong()
+    var scrubProgress by remember(videoId) { mutableStateOf<Float?>(null) }
+    val currentOnSeek by rememberUpdatedState(onSeek)
+    val safeDurationMs = durationMs.coerceAtLeast(0L)
+    val displayProgress = (scrubProgress ?: progress).coerceIn(0f, 1f)
+    val displayPositionMs = if (scrubProgress != null && safeDurationMs > 0L) {
+        (displayProgress * safeDurationMs).toLong()
     } else {
-        currentPositionMs
+        currentPositionMs.coerceAtLeast(0L)
     }
 
     val density = LocalDensity.current
@@ -69,7 +73,7 @@ fun TimelineScrubberRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = formatScrubberTime(displayPositionMs),
+            text = formatDuration(displayPositionMs),
             color = Color(0xFF94A3B8),
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
@@ -81,18 +85,18 @@ fun TimelineScrubberRow(
                 .weight(1f)
                 .height(24.dp)
                 .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
-                .pointerInput(Unit) {
+                .pointerInput(videoId) {
                     detectTapGestures { offset ->
-                        onSeek((offset.x / widthPx).coerceIn(0f, 1f))
+                        currentOnSeek((offset.x / widthPx).coerceIn(0f, 1f))
                     }
                 }
-                .pointerInput(Unit) {
+                .pointerInput(videoId) {
                     detectDragGestures(
                         onDragStart = { offset ->
                             scrubProgress = (offset.x / widthPx).coerceIn(0f, 1f)
                         },
                         onDragEnd = {
-                            scrubProgress?.let { onSeek(it) }
+                            scrubProgress?.let { currentOnSeek(it) }
                             scrubProgress = null
                         },
                         onDragCancel = { scrubProgress = null }
@@ -103,7 +107,6 @@ fun TimelineScrubberRow(
                 },
             contentAlignment = Alignment.CenterStart
         ) {
-            // Track Background
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -112,7 +115,6 @@ fun TimelineScrubberRow(
                     .background(Color(0x26FFFFFF))
             )
 
-            // Active Progress
             Box(
                 modifier = Modifier
                     .fillMaxWidth(displayProgress)
@@ -125,14 +127,13 @@ fun TimelineScrubberRow(
                     )
             )
 
-            // Frame preview follows the thumb while scrubbing.
             if (scrubProgress != null) {
                 val maxOffset = (widthPx - previewWidthPx).coerceAtLeast(0f)
                 val x = (displayProgress * widthPx - previewWidthPx / 2f).coerceIn(0f, maxOffset)
                 SeekPreviewBubble(
                     videoId = videoId,
                     filePath = filePath,
-                    durationMs = durationMs,
+                    durationMs = safeDurationMs,
                     positionMs = displayPositionMs,
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -146,20 +147,13 @@ fun TimelineScrubberRow(
             }
         }
 
-        val remainingMs = (durationMs - displayPositionMs).coerceAtLeast(0L)
+        val remainingMs = (safeDurationMs - displayPositionMs).coerceAtLeast(0L)
         Text(
-            text = "-${formatScrubberTime(remainingMs)}",
+            text = "-${formatDuration(remainingMs)}",
             color = Color(0xFF94A3B8),
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = FontFamily.Monospace
         )
     }
-}
-
-private fun formatScrubberTime(ms: Long): String {
-    val totalSec = ms / 1000L
-    val min = totalSec / 60L
-    val sec = totalSec % 60L
-    return "%02d:%02d".format(min, sec)
 }

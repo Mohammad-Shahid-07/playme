@@ -55,17 +55,17 @@ object PlayerSettingsDelegate {
     fun selectAudio(state: PlayerState, trackNameOrId: String, engine: PlayerEngineContract?): Pair<PlayerState, String> {
         val track = findAudioTrack(state.availableAudioTracks, trackNameOrId)
         val idToSelect = track?.id ?: trackNameOrId
-        val name = track?.name ?: trackNameOrId
+        val name = track?.name ?: if (idToSelect == "default") "Default Audio" else trackNameOrId
         engine?.selectAudioTrack(idToSelect)
-        return state.copy(selectedAudioTrack = name) to "Audio: $name"
+        return state.copy(selectedAudioTrack = idToSelect) to "Audio: $name"
     }
 
     fun selectSubtitle(state: PlayerState, trackNameOrId: String, engine: PlayerEngineContract?): Pair<PlayerState, String> {
         val track = findSubtitleTrack(state.availableSubtitleTracks, trackNameOrId)
-        val idToSelect = track?.id ?: trackNameOrId
-        val name = track?.name ?: trackNameOrId
+        val idToSelect = track?.id ?: if (trackNameOrId.equals("Off", ignoreCase = true) || trackNameOrId == "-1") "none" else trackNameOrId
+        val name = track?.name ?: if (idToSelect == "none") "Off" else trackNameOrId
         engine?.selectSubtitleTrack(idToSelect)
-        return state.copy(selectedSubtitleTrack = name) to "Subtitle: $name"
+        return state.copy(selectedSubtitleTrack = idToSelect) to "Subtitle: $name"
     }
 
     fun toggleDialogueClarity(state: PlayerState): Pair<PlayerState, String> {

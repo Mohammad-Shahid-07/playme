@@ -1,8 +1,10 @@
 package com.playme.player.feature.player.ui
 
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.playme.player.core.designsystem.PlayMeColors
@@ -34,12 +37,21 @@ fun VideoStageCanvas(
     aspectRatioMode: AspectRatioMode,
     isControlsVisible: Boolean,
     currentSubtitle: String?,
+    ambientGlowEnabled: Boolean = true,
+    subtitleSize: String = "Normal",
     modifier: Modifier = Modifier,
     videoSurface: @Composable (() -> Unit)? = null
 ) {
     val contentScale = when (aspectRatioMode) {
-        AspectRatioMode.FIT_SCREEN, AspectRatioMode.FILL -> ContentScale.Crop
+        AspectRatioMode.FIT_SCREEN -> ContentScale.Crop
+        AspectRatioMode.FILL -> ContentScale.FillBounds
         else -> ContentScale.Fit
+    }
+
+    val subtitleFontSize = when (subtitleSize) {
+        "Large" -> 16.sp
+        "Extra Large" -> 20.sp
+        else -> 12.sp
     }
 
     Box(
@@ -48,21 +60,9 @@ fun VideoStageCanvas(
             .background(Color(0xFF05060A))
     ) {
         // 1. Dynamic Atmospheric Ambilight Glow
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxSize(0.85f)
-                .blur(80.dp)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            PlayMeColors.ElectricViolet.copy(alpha = 0.22f),
-                            PlayMeColors.DeepViolet.copy(alpha = 0.12f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
+        if (ambientGlowEnabled) {
+            AmbientStageGlow(modifier = Modifier.align(Alignment.Center))
+        }
 
         // 2. Cached poster frame. Shown instantly on open so the transition
         //    never feels like a black wait while codecs spin up.
@@ -127,7 +127,11 @@ fun VideoStageCanvas(
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = if (isControlsVisible) 110.dp else 44.dp)
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        bottom = if (isControlsVisible) 110.dp else 44.dp
+                    )
                     .clip(RoundedCornerShape(999.dp))
                     .background(Color(0xDD0C0E18))
                     .border(1.dp, Color(0x33757BF8), RoundedCornerShape(999.dp))
@@ -136,11 +140,48 @@ fun VideoStageCanvas(
                 Text(
                     text = currentSubtitle,
                     color = Color(0xFFF8FAFC),
-                    fontSize = 12.sp,
+                    fontSize = subtitleFontSize,
                     fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.3.sp
+                    letterSpacing = 0.3.sp,
+                    textAlign = TextAlign.Center
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AmbientStageGlow(modifier: Modifier = Modifier) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        Box(
+            modifier = modifier
+                .fillMaxSize(0.85f)
+                .blur(80.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            PlayMeColors.ElectricViolet.copy(alpha = 0.22f),
+                            PlayMeColors.DeepViolet.copy(alpha = 0.12f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+    } else {
+        // RenderEffect blur is API 31+ only; use a soft full-bleed radial falloff on API 26-30.
+        Canvas(modifier = modifier.fillMaxSize()) {
+            val radius = (size.maxDimension * 0.52f).coerceAtLeast(1f)
+            drawRect(
+                brush = Brush.radialGradient(
+                    colorStops = arrayOf(
+                        0.0f to PlayMeColors.ElectricViolet.copy(alpha = 0.16f),
+                        0.45f to PlayMeColors.DeepViolet.copy(alpha = 0.07f),
+                        1.0f to Color.Transparent
+                    ),
+                    center = center,
+                    radius = radius
+                )
+            )
         }
     }
 }

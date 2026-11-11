@@ -22,6 +22,7 @@ class PlayerTransportController(
     fun play() {
         state.update { it.copy(isPlaying = true) }
         engine()?.play()
+        effects.resetControlsTimer()
     }
 
     fun pause() {
@@ -104,7 +105,11 @@ class PlayerTransportController(
                 gestureValue = if (it.activeGesture == GestureType.VOLUME) clamped else it.gestureValue
             )
         }
-        engine()?.setVolume(clamped)
+    }
+
+    fun syncSystemVolume(volume: Float) {
+        val clamped = volume.coerceIn(0f, 1f)
+        state.update { it.copy(volumePercent = clamped) }
     }
 
     fun setBrightness(brightness: Float) {

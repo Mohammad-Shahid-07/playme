@@ -43,12 +43,19 @@ class PlayMePlayerEngine(
     private var progressPollJob: Job? = null
     private var savedVolume: Float = 1.0f
     private var loudnessEnhancer: LoudnessEnhancer? = null
+    private var loudnessSessionId: Int = C.AUDIO_SESSION_ID_UNSET
+    private var volumeBoostPercent: Int = 100
     private var pendingError: String? = null
 
     override val player: ExoPlayer? get() = exoPlayer
     override val engineType: EngineType = EngineType.EXO
 
     private fun buildPlayer() {
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+            .build()
+
         try {
             val renderersFactory = DefaultRenderersFactory(context).apply {
                 setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
@@ -61,15 +68,11 @@ class PlayMePlayerEngine(
             val dataSourceFactory = DefaultDataSource.Factory(context)
             val mediaSourceFactory = DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory)
 
-            val audioAttributes = AudioAttributes.Builder()
-                .setUsage(C.USAGE_MEDIA)
-                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
-                .build()
-
             exoPlayer = ExoPlayer.Builder(context, renderersFactory)
                 .setMediaSourceFactory(mediaSourceFactory)
                 .setTrackSelector(selector)
-                .setAudioAttributes(audioAttributes, true)
+                // PlayerAudioFocusEffect is the single audio-focus owner for both engines.
+                .setAudioAttributes(audioAttributes, false)
                 .setSeekBackIncrementMs(10_000L)
                 .setSeekForwardIncrementMs(10_000L)
                 .build().apply {
@@ -79,7 +82,10 @@ class PlayMePlayerEngine(
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to initialize ExoPlayer with custom factory: ${e.message}", e)
             try {
-                exoPlayer = ExoPlayer.Builder(context).build().apply { addListener(playerListener) }
+                exoPlayer = ExoPlayer.Builder(context)
+                    .setAudioAttributes(audioAttributes, false)
+                    .build()
+                    .apply { addListener(playerListener) }
             } catch (e2: Throwable) {
                 Log.e(TAG, "Fallback ExoPlayer builder also failed", e2)
                 pendingError = "Player initialization failed: ${e2.message}"
@@ -101,6 +107,9 @@ class PlayMePlayerEngine(
             val isPlaying = exoPlayer?.isPlaying == true
             engineListener?.onPlaybackStateChanged(isPlaying, isBuffering)
             updateProgress()
+            if (playbackState == Player.STATE_READY && volumeBoostPercent > 100) {
+                setVolumeBoost(volumeBoostPercent)
+            }
             if (playbackState == Player.STATE_ENDED) {
                 engineListener?.onPlaybackEnded()
             }
@@ -154,6 +163,7 @@ class PlayMePlayerEngine(
 
     override fun detachSurface() {
         attachedSurfaceView?.let { exoPlayer?.clearVideoSurfaceView(it) }
+            ?: exoPlayer?.clearVideoSurface()
         attachedSurfaceView = null
     }
 
@@ -165,21 +175,33 @@ class PlayMePlayerEngine(
             return
         }
 
+        pendingError = null
+        trackSelector?.let { selector ->
+            selector.parameters = selector.buildUponParameters()
+                .clearOverrides()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+                .build()
+        }
+
         val resolvedUri = MediaUriResolver.resolve(context, video)
         Log.d(TAG, "playVideo: id=${video.id}, title=${video.title}, resolvedUri=$resolvedUri")
         val mediaItem = MediaItem.fromUri(resolvedUri)
 
         player.apply {
-            stop()
-            clearMediaItems()
+            playWhenReady = true
             setMediaItem(mediaItem)
             attachedSurfaceView?.let { setVideoSurfaceView(it) }
             prepare()
-            playWhenReady = true
         }
     }
 
-    override fun play() { exoPlayer?.play() }
+    override fun play() {
+        val player = exoPlayer ?: return
+        if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) {
+            player.prepare()
+        }
+        player.play()
+    }
     override fun pause() { exoPlayer?.pause() }
     override fun seekTo(positionMs: Long) {
         exoPlayer?.seekTo(positionMs)
@@ -202,11 +224,18 @@ class PlayMePlayerEngine(
     }
 
     override fun setVolumeBoost(percent: Int) {
+        volumeBoostPercent = percent
+        if (percent <= 100 && loudnessEnhancer == null) return
         val sessionId = exoPlayer?.audioSessionId ?: return
         if (sessionId == C.AUDIO_SESSION_ID_UNSET) return
         try {
+            if (loudnessEnhancer != null && loudnessSessionId != sessionId) {
+                loudnessEnhancer?.release()
+                loudnessEnhancer = null
+            }
             if (loudnessEnhancer == null) {
                 loudnessEnhancer = LoudnessEnhancer(sessionId)
+                loudnessSessionId = sessionId
             }
             val gainMb = ((percent - 100) * 80).coerceIn(0, 8000)
             loudnessEnhancer?.setTargetGain(gainMb)
@@ -226,6 +255,7 @@ class PlayMePlayerEngine(
 
     private fun stopProgressPolling() {
         progressPollJob?.cancel()
+        progressPollJob = null
         updateProgress()
     }
 
@@ -239,10 +269,12 @@ class PlayMePlayerEngine(
 
     override fun release() {
         stopProgressPolling()
+        engineListener = null
         detachSurface()
         try {
             loudnessEnhancer?.release()
             loudnessEnhancer = null
+            loudnessSessionId = C.AUDIO_SESSION_ID_UNSET
         } catch (_: Throwable) {}
         exoPlayer?.removeListener(playerListener)
         exoPlayer?.release()

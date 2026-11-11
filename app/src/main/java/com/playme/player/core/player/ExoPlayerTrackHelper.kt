@@ -17,14 +17,14 @@ object ExoPlayerTrackHelper {
         val audioList = mutableListOf<MediaTrackInfo>()
         val subList = mutableListOf<MediaTrackInfo>()
 
-        for (group in tracks.groups) {
+        for ((groupIndex, group) in tracks.groups.withIndex()) {
             val trackType = group.type
             val mediaTrackGroup = group.mediaTrackGroup
             for (i in 0 until mediaTrackGroup.length) {
                 val format = mediaTrackGroup.getFormat(i)
                 val isSelected = group.isTrackSelected(i)
                 val label = format.label ?: format.language ?: "Track ${i + 1}"
-                val id = format.id ?: "$trackType-$i"
+                val id = trackId(trackType, groupIndex, i, format.id)
 
                 if (trackType == C.TRACK_TYPE_AUDIO) {
                     audioList.add(
@@ -53,15 +53,21 @@ object ExoPlayerTrackHelper {
     }
 
     fun selectAudioTrack(selector: DefaultTrackSelector?, player: ExoPlayer?, trackId: String) {
-        val currentTracks = player?.currentTracks ?: return
         val defaultSelector = selector ?: return
+        if (trackId == "default") {
+            defaultSelector.parameters = defaultSelector.buildUponParameters()
+                .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
+                .build()
+            return
+        }
+        val currentTracks = player?.currentTracks ?: return
 
-        for (group in currentTracks.groups) {
+        for ((groupIndex, group) in currentTracks.groups.withIndex()) {
             if (group.type == C.TRACK_TYPE_AUDIO) {
                 val mediaTrackGroup = group.mediaTrackGroup
                 for (i in 0 until mediaTrackGroup.length) {
                     val format = mediaTrackGroup.getFormat(i)
-                    val id = format.id ?: "${group.type}-$i"
+                    val id = trackId(group.type, groupIndex, i, format.id)
                     if (id == trackId) {
                         defaultSelector.parameters = defaultSelector.buildUponParameters()
                             .setOverrideForType(TrackSelectionOverride(mediaTrackGroup, i))
@@ -77,17 +83,18 @@ object ExoPlayerTrackHelper {
         val defaultSelector = selector ?: return
         if (trackId == "none" || trackId == "-1") {
             defaultSelector.parameters = defaultSelector.buildUponParameters()
+                .clearOverridesOfType(C.TRACK_TYPE_TEXT)
                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
                 .build()
             return
         }
         val currentTracks = player?.currentTracks ?: return
-        for (group in currentTracks.groups) {
+        for ((groupIndex, group) in currentTracks.groups.withIndex()) {
             if (group.type == C.TRACK_TYPE_TEXT) {
                 val mediaTrackGroup = group.mediaTrackGroup
                 for (i in 0 until mediaTrackGroup.length) {
                     val format = mediaTrackGroup.getFormat(i)
-                    val id = format.id ?: "${group.type}-$i"
+                    val id = trackId(group.type, groupIndex, i, format.id)
                     if (id == trackId) {
                         defaultSelector.parameters = defaultSelector.buildUponParameters()
                             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
@@ -99,4 +106,7 @@ object ExoPlayerTrackHelper {
             }
         }
     }
+
+    private fun trackId(trackType: Int, groupIndex: Int, trackIndex: Int, formatId: String?): String =
+        formatId ?: "$trackType-$groupIndex-$trackIndex"
 }

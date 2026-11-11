@@ -27,6 +27,7 @@ enum class SettingsTab {
 data class PlayerState(
     val currentVideo: VideoItem? = null,
     val playlist: List<VideoItem> = emptyList(),
+    val preShufflePlaylist: List<VideoItem> = emptyList(),
     val currentIndex: Int = 0,
     val isPlaying: Boolean = true,
     val isBuffering: Boolean = false,
@@ -43,8 +44,8 @@ data class PlayerState(
     val isAbLoopActive: Boolean = false,
     val abLoopStartMs: Long? = null,
     val abLoopEndMs: Long? = null,
-    val volumePercent: Float = 0.5f,
-    val brightnessPercent: Float = 0.6f,
+    val volumePercent: Float = -1f,
+    val brightnessPercent: Float = -1f,
     val activeGesture: GestureType = GestureType.NONE,
     val gestureValue: Float = 0f,
     val seekPreviewPositionMs: Long = 0L,
@@ -69,8 +70,8 @@ data class PlayerState(
     val backgroundPlayEnabled: Boolean = false,
     val availableAudioTracks: List<MediaTrackInfo> = emptyList(),
     val availableSubtitleTracks: List<MediaTrackInfo> = emptyList(),
-    val selectedAudioTrack: String = "Default Audio",
-    val selectedSubtitleTrack: String = "None",
+    val selectedAudioTrack: String = "default",
+    val selectedSubtitleTrack: String = "none",
     val subtitleSize: String = "Normal"
 ) {
     val progressPercent: Float

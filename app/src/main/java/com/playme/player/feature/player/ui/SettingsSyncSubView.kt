@@ -21,7 +21,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.util.Locale
+import com.playme.player.core.util.formatDelaySeconds
 
 @Composable
 fun SettingsSyncSubView(
@@ -29,18 +29,18 @@ fun SettingsSyncSubView(
     delayMs: Long,
     isAudio: Boolean,
     onAdjustDelay: (Long) -> Unit,
-    onReset: () -> Unit,
+    onReset: () -> Unit = { onAdjustDelay(-delayMs) },
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val delaySec = delayMs / 1000f
-    val delayFormatted = if (delayMs == 0L) "0.0 s" else if (delayMs > 0) String.format(Locale.US, "+%.1f s", delaySec) else String.format(Locale.US, "%.1f s", delaySec)
-    val hintText = if (delayMs == 0L) {
-        if (isAudio) "Audio & Video are in perfect sync" else "Subtitles are in perfect sync"
-    } else if (delayMs > 0) {
-        if (isAudio) "Audio is delayed behind video" else "Subtitles are delayed"
-    } else {
-        if (isAudio) "Audio plays ahead of video" else "Subtitles appear early"
+    val delayFormatted = formatDelaySeconds(delayMs, includePlus = true, spaceBeforeUnit = true)
+    val hintText = when {
+        delayMs == 0L && isAudio -> "Audio & Video are in perfect sync"
+        delayMs == 0L -> "Subtitles are in perfect sync"
+        delayMs > 0L && isAudio -> "Audio is delayed behind video"
+        delayMs > 0L -> "Subtitles are delayed"
+        isAudio -> "Audio plays ahead of video"
+        else -> "Subtitles appear early"
     }
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -54,7 +54,7 @@ fun SettingsSyncSubView(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0x09FFFFFF))
                     .border(1.dp, Color(0x12FFFFFF), RoundedCornerShape(12.dp))
-                    .padding(vertical = 16.dp, horizontal = 12.dp),
+                    .padding(vertical = 16.dp, horizontal = 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -87,18 +87,18 @@ fun SettingsSyncSubView(
                     // Steppers Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (isAudio) {
                             SyncStepButton(label = "-0.5s", onClick = { onAdjustDelay(-500L) }, modifier = Modifier.weight(1f))
                             SyncStepButton(label = "-0.1s", onClick = { onAdjustDelay(-100L) }, modifier = Modifier.weight(1f))
-                            SyncResetButton(onClick = onReset, modifier = Modifier.weight(1.3f))
+                            SyncResetButton(onClick = onReset, modifier = Modifier.weight(1.2f))
                             SyncStepButton(label = "+0.1s", onClick = { onAdjustDelay(100L) }, modifier = Modifier.weight(1f))
                             SyncStepButton(label = "+0.5s", onClick = { onAdjustDelay(500L) }, modifier = Modifier.weight(1f))
                         } else {
                             SyncStepButton(label = "-0.2s", onClick = { onAdjustDelay(-200L) }, modifier = Modifier.weight(1f))
-                            SyncResetButton(onClick = onReset, modifier = Modifier.weight(1.3f))
+                            SyncResetButton(onClick = onReset, modifier = Modifier.weight(1.2f))
                             SyncStepButton(label = "+0.2s", onClick = { onAdjustDelay(200L) }, modifier = Modifier.weight(1f))
                         }
                     }
@@ -126,9 +126,11 @@ private fun SyncStepButton(
         Text(
             text = label,
             color = Color(0xFFE2E8F0),
-            fontSize = 11.5.sp,
+            fontSize = 10.5.sp,
             fontWeight = FontWeight.SemiBold,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
@@ -150,8 +152,10 @@ private fun SyncResetButton(
         Text(
             text = "Reset",
             color = Color(0xFFC7D2FE),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold
+            fontSize = 10.5.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

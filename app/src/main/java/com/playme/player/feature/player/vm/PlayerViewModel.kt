@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.playme.player.core.model.VideoItem
 import com.playme.player.core.player.PlayerEngineContract
+import com.playme.player.core.player.PlayerEngineListener
 import com.playme.player.feature.player.model.GestureType
 import com.playme.player.feature.player.model.PlayerAction
 import com.playme.player.feature.player.model.PlayerState
@@ -23,9 +24,16 @@ class PlayerViewModel : ViewModel() {
     var engine by mutableStateOf<PlayerEngineContract?>(null)
         private set
 
+    private var progressRecorder: ((VideoItem, Long, Long) -> Unit)? = null
+
     private val effects = PlayerSessionEffects(_state, viewModelScope) { engine }
     private val transport = PlayerTransportController(_state, { engine }, effects)
-    private val queue = PlayerQueueController(_state, effects, transport) { video, playlist ->
+    private val queue = PlayerQueueController(
+        state = _state,
+        effects = effects,
+        transport = transport,
+        onPlaybackCompleted = { recordCurrentProgress(completed = true) }
+    ) { video, playlist ->
         setInitialVideo(video, playlist)
     }
 
@@ -33,8 +41,13 @@ class PlayerViewModel : ViewModel() {
         resetControlsTimer()
     }
 
+    fun setProgressRecorder(recorder: ((VideoItem, Long, Long) -> Unit)?) {
+        progressRecorder = recorder
+    }
+
     fun attachEngine(playerEngine: PlayerEngineContract?) {
         if (this.engine === playerEngine) return
+        this.engine?.setListener(NO_OP_LISTENER)
         this.engine = playerEngine
         if (playerEngine == null) return
 
@@ -44,10 +57,11 @@ class PlayerViewModel : ViewModel() {
                 updateState = { updater -> _state.update(updater) },
                 onSeekTo = { transport.seekTo(it) },
                 onShowToast = { effects.showToast(it) },
-                onPlaybackEnded = { queue.onPlaybackEnded() }
+                onPlaybackEnded = { queue.onPlaybackEnded() },
+                isCurrentEngine = { this.engine === playerEngine }
             )
         )
-        playerEngine.setDecoderMode(_state.value.decoderMode)
+        applySessionSettings(playerEngine, _state.value)
     }
 
     /**
@@ -56,17 +70,42 @@ class PlayerViewModel : ViewModel() {
      * instead of showing an empty "Unknown Video" shell.
      */
     fun prepareVideo(video: VideoItem, playlist: List<VideoItem> = listOf(video)) {
-        applyVideoSelection(video, playlist)
+        applyVideoSelection(video, playlist, resetQueueMode = true)
     }
 
     fun setInitialVideo(video: VideoItem, playlist: List<VideoItem> = listOf(video)) {
-        applyVideoSelection(video, playlist)
+        val prev = _state.value
+        val prevVideo = prev.currentVideo
+        if (prevVideo != null && prevVideo.id != video.id && prev.durationMs > 0L && prev.currentPositionMs > 0L) {
+            progressRecorder?.invoke(prevVideo, prev.currentPositionMs, prev.durationMs)
+        }
+        applyVideoSelection(video, playlist, resetQueueMode = false)
         engine?.playVideo(video)
         resetControlsTimer()
     }
 
-    private fun applyVideoSelection(video: VideoItem, playlist: List<VideoItem>) {
-        _state.value = PlayerVideoSelection.apply(_state.value, video, playlist)
+    fun recordCurrentProgress(completed: Boolean = false) {
+        val snapshot = _state.value
+        val video = snapshot.currentVideo ?: return
+        val dur = snapshot.durationMs
+        if (dur <= 0L) return
+        val pos = if (completed) dur else snapshot.currentPositionMs
+        progressRecorder?.invoke(video, pos, dur)
+    }
+
+    private fun applyVideoSelection(video: VideoItem, playlist: List<VideoItem>, resetQueueMode: Boolean) {
+        _state.value = PlayerVideoSelection.apply(_state.value, video, playlist, resetQueueMode)
+    }
+
+    private fun applySessionSettings(target: PlayerEngineContract, snapshot: PlayerState) {
+        target.setDecoderMode(snapshot.decoderMode)
+        target.setSpeed(if (snapshot.isSpeedBoostActive) snapshot.boostSpeed else snapshot.playbackSpeed)
+        target.setAspectRatio(snapshot.aspectRatioMode)
+        target.setVolume(1.0f)
+        target.setMuted(snapshot.isMuted)
+        target.setVolumeBoost(snapshot.volumeBoostPercent)
+        target.setAudioDelay(snapshot.audioDelayMs)
+        target.setSubtitleDelay(snapshot.subtitleDelayMs)
     }
 
     fun onAction(action: PlayerAction) {
@@ -95,6 +134,7 @@ class PlayerViewModel : ViewModel() {
             PlayerAction.ShowControls -> transport.showControls()
             PlayerAction.ToggleAbLoop -> transport.toggleAbLoop()
             is PlayerAction.SetVolume -> transport.setVolume(action.volume)
+            is PlayerAction.SyncSystemVolume -> transport.syncSystemVolume(action.volume)
             is PlayerAction.SetBrightness -> transport.setBrightness(action.brightness)
             is PlayerAction.StartGesture -> _state.update { state ->
                 if (action.type == GestureType.SEEK) {
@@ -105,7 +145,10 @@ class PlayerViewModel : ViewModel() {
                         seekPreviewPositionMs = state.currentPositionMs
                     )
                 } else {
-                    state.copy(activeGesture = action.type, gestureValue = action.value)
+                    val value = if (action.value < 0f &&
+                        (action.type == GestureType.BRIGHTNESS || action.type == GestureType.VOLUME)
+                    ) 0.5f else action.value
+                    state.copy(activeGesture = action.type, gestureValue = value)
                 }
             }
             is PlayerAction.UpdateGesture -> when (action.type) {
@@ -140,7 +183,7 @@ class PlayerViewModel : ViewModel() {
             PlayerAction.ToggleShuffle -> queue.toggleShuffle()
             PlayerAction.CycleRepeatMode -> queue.cycleRepeatMode()
             PlayerAction.ToggleAutoplay -> _state.update { it.copy(isAutoplay = !it.isAutoplay) }
-            is PlayerAction.RemoveFromQueue -> _state.update { it.copy(playlist = PlayerQueueDelegate.removeTrack(it.playlist, action.videoId)) }
+            is PlayerAction.RemoveFromQueue -> queue.removeFromQueue(action.videoId)
             PlayerAction.ClearQueue -> queue.clearQueue()
             is PlayerAction.SetSpeedPickerOpen -> _state.update { it.copy(isSpeedPickerOpen = action.isOpen) }
             PlayerAction.ToggleDialogueClarity -> applyDelegateResult(PlayerSettingsDelegate.toggleDialogueClarity(_state.value))
@@ -166,6 +209,17 @@ class PlayerViewModel : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
+        engine?.setListener(NO_OP_LISTENER)
         engine?.release()
+        engine = null
+    }
+
+    private companion object {
+        val NO_OP_LISTENER = object : PlayerEngineListener {
+            override fun onPositionChanged(positionMs: Long, durationMs: Long, bufferMs: Long) {}
+            override fun onPlaybackStateChanged(isPlaying: Boolean, isBuffering: Boolean) {}
+            override fun onSubtitleCue(cueText: String?) {}
+            override fun onError(errorMessage: String) {}
+        }
     }
 }

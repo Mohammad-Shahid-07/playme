@@ -19,6 +19,7 @@ sealed interface PlayerAction {
     data object ShowControls : PlayerAction
     data object ToggleAbLoop : PlayerAction
     data class SetVolume(val volume: Float) : PlayerAction
+    data class SyncSystemVolume(val volume: Float) : PlayerAction
     data class SetBrightness(val brightness: Float) : PlayerAction
     data class StartGesture(val type: GestureType, val value: Float) : PlayerAction
     data class UpdateGesture(val type: GestureType, val value: Float) : PlayerAction

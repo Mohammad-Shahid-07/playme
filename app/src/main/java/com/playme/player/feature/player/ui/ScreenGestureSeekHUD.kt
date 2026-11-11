@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.FastRewind
@@ -32,24 +31,19 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.playme.player.core.util.formatDuration
 import kotlin.math.abs
-
-private fun formatTime(seconds: Long): String {
-    val s = seconds.coerceAtLeast(0L)
-    val mins = s / 60
-    val secs = s % 60
-    return String.format("%02d:%02d", mins, secs)
-}
 
 private fun formatDelta(deltaSec: Long): String {
     val absSec = abs(deltaSec)
     val sign = if (deltaSec >= 0) "+" else "-"
-    val mins = absSec / 60
-    val secs = absSec % 60
-    return if (mins > 0) {
-        "${sign}${mins}m ${secs}s"
-    } else {
-        "${sign}${secs}s"
+    val hours = absSec / 3600L
+    val mins = (absSec % 3600L) / 60L
+    val secs = absSec % 60L
+    return when {
+        hours > 0L -> "${sign}${hours}h ${mins}m ${secs}s"
+        mins > 0L -> "${sign}${mins}m ${secs}s"
+        else -> "${sign}${secs}s"
     }
 }
 
@@ -63,8 +57,8 @@ fun ScreenGestureSeekHUD(
 ) {
     val isForward = deltaMs >= 0
     val deltaSec = deltaMs / 1000L
-    val targetPosSec = targetPosMs.coerceIn(0L, durationMs) / 1000L
-    val durationSec = durationMs / 1000L
+    val safeDurationMs = durationMs.coerceAtLeast(0L)
+    val clampedTargetMs = targetPosMs.coerceIn(0L, safeDurationMs)
 
     AnimatedVisibility(
         visible = isActive,
@@ -86,7 +80,6 @@ fun ScreenGestureSeekHUD(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Directional Icon
                 Icon(
                     imageVector = if (isForward) Icons.Rounded.FastForward else Icons.Rounded.FastRewind,
                     contentDescription = null,
@@ -94,7 +87,6 @@ fun ScreenGestureSeekHUD(
                     modifier = Modifier.size(18.dp)
                 )
 
-                // Time Delta Badge
                 Text(
                     text = formatDelta(deltaSec),
                     color = if (isForward) Color(0xFFA5B4FC) else Color(0xFFE9D5FF),
@@ -104,7 +96,6 @@ fun ScreenGestureSeekHUD(
                     letterSpacing = (-0.2).sp
                 )
 
-                // Vertical Divider
                 Box(
                     modifier = Modifier
                         .width(1.dp)
@@ -112,13 +103,12 @@ fun ScreenGestureSeekHUD(
                         .background(Color(0x29FFFFFF))
                 )
 
-                // Target Time / Duration Group
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
-                        text = formatTime(targetPosSec),
+                        text = formatDuration(clampedTargetMs),
                         color = Color.White,
                         fontSize = 14.5.sp,
                         fontWeight = FontWeight.ExtraBold,
@@ -126,7 +116,7 @@ fun ScreenGestureSeekHUD(
                         letterSpacing = (-0.3).sp
                     )
                     Text(
-                        text = "/ ${formatTime(durationSec)}",
+                        text = "/ ${formatDuration(safeDurationMs)}",
                         color = Color(0xFF94A3B8),
                         fontSize = 11.5.sp,
                         fontWeight = FontWeight.Medium,

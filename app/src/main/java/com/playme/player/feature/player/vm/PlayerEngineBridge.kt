@@ -13,10 +13,12 @@ object PlayerEngineBridge {
         updateState: ((PlayerState) -> PlayerState) -> Unit,
         onSeekTo: (Long) -> Unit,
         onShowToast: (String) -> Unit,
-        onPlaybackEnded: () -> Unit
+        onPlaybackEnded: () -> Unit,
+        isCurrentEngine: () -> Boolean = { true }
     ): PlayerEngineListener {
         return object : PlayerEngineListener {
             override fun onPositionChanged(positionMs: Long, durationMs: Long, bufferMs: Long) {
+                if (!isCurrentEngine()) return
                 if (PlayerPlaybackCoordinator.isAbLoopBoundaryReached(state.value, positionMs)) {
                     val start = state.value.abLoopStartMs ?: 0L
                     onSeekTo(start)
@@ -33,6 +35,7 @@ object PlayerEngineBridge {
             }
 
             override fun onPlaybackStateChanged(isPlaying: Boolean, isBuffering: Boolean) {
+                if (!isCurrentEngine()) return
                 updateState {
                     // A seek makes the engine report "not playing" for a moment
                     // while it buffers. Keep the user's play/pause intent so the
@@ -45,29 +48,38 @@ object PlayerEngineBridge {
             }
 
             override fun onSubtitleCue(cueText: String?) {
+                if (!isCurrentEngine()) return
                 updateState { it.copy(currentSubtitle = cueText) }
             }
 
             override fun onTracksChanged(audioTracks: List<MediaTrackInfo>, subtitleTracks: List<MediaTrackInfo>) {
+                if (!isCurrentEngine()) return
                 updateState {
+                    val activeAudio = audioTracks.firstOrNull { t -> t.isSelected }?.id
+                        ?: if (audioTracks.isEmpty()) "default" else it.selectedAudioTrack
+                    val activeSubtitle = subtitleTracks.firstOrNull { t -> t.isSelected }?.id
+                        ?: "none"
                     it.copy(
                         availableAudioTracks = audioTracks,
                         availableSubtitleTracks = subtitleTracks,
-                        selectedAudioTrack = audioTracks.firstOrNull { t -> t.isSelected }?.name ?: it.selectedAudioTrack,
-                        selectedSubtitleTrack = subtitleTracks.firstOrNull { t -> t.isSelected }?.name ?: it.selectedSubtitleTrack
+                        selectedAudioTrack = activeAudio,
+                        selectedSubtitleTrack = activeSubtitle
                     )
                 }
             }
 
             override fun onPlaybackEnded() {
+                if (!isCurrentEngine()) return
                 onPlaybackEnded()
             }
 
             override fun onError(errorMessage: String) {
+                if (!isCurrentEngine()) return
                 onShowToast(errorMessage)
             }
 
             override fun onEngineSwitched(engineType: EngineType) {
+                if (!isCurrentEngine()) return
                 // Engine choice is an implementation detail; never surface it.
                 updateState { it.copy(activeEngineType = engineType) }
             }

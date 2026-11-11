@@ -7,11 +7,17 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -58,13 +64,17 @@ fun PlayerTopBar(
                     )
                 )
             )
-            .statusBarsPadding()
+            .windowInsetsPadding(
+                WindowInsets.statusBars
+                    .union(WindowInsets.displayCutout)
+                    .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+            )
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Left: Back button + Title & metadata
             Row(
@@ -106,20 +116,42 @@ fun PlayerTopBar(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Text(
-                            text = resolution,
-                            color = Color(0xFFA5B4FC),
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(text = "·", color = Color(0xFF475569), fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                        Text(text = fileSize, color = Color(0xFF94A3B8), fontSize = 10.5.sp)
-                        Text(text = "·", color = Color(0xFF475569), fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                        Text(text = format, color = Color(0xFF94A3B8), fontSize = 10.5.sp)
+                    val metaTail = listOf(fileSize, format)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · ")
+                    if (resolution.isNotBlank() || metaTail.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            if (resolution.isNotBlank()) {
+                                Text(
+                                    text = resolution,
+                                    color = Color(0xFFA5B4FC),
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            if (resolution.isNotBlank() && metaTail.isNotBlank()) {
+                                Text(
+                                    text = "·",
+                                    color = Color(0xFF475569),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            if (metaTail.isNotBlank()) {
+                                Text(
+                                    text = metaTail,
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 10.5.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
                     }
                 }
             }

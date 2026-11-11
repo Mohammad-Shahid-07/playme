@@ -11,7 +11,7 @@ object VlcTrackHelper {
         val currentAudio = mp.audioTrack
         val currentSpu = mp.spuTrack
 
-        val audioList = mp.audioTracks?.map { track ->
+        val audioList = mp.audioTracks?.filter { it.id != -1 }?.map { track ->
             MediaTrackInfo(
                 id = track.id.toString(),
                 name = track.name.ifBlank { "Track ${track.id}" },
@@ -20,10 +20,10 @@ object VlcTrackHelper {
             )
         } ?: emptyList()
 
-        val spuList = mp.spuTracks?.map { track ->
+        val spuList = mp.spuTracks?.filter { it.id != -1 }?.map { track ->
             MediaTrackInfo(
                 id = track.id.toString(),
-                name = if (track.id == -1) "Disable Subtitles" else track.name.ifBlank { "Subtitle ${track.id}" },
+                name = track.name.ifBlank { "Subtitle ${track.id}" },
                 type = TrackType.SUBTITLE,
                 isSelected = track.id == currentSpu
             )

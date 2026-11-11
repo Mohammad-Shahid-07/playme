@@ -8,16 +8,20 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Repeat
 import androidx.compose.material.icons.rounded.RepeatOne
@@ -61,6 +65,16 @@ fun QueueBottomSheet(
     if (!isOpen) return
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val safeIndex = when {
+        currentIndex in playlist.indices &&
+            (currentVideo == null || playlist[currentIndex].id == currentVideo.id) -> currentIndex
+        currentVideo != null -> playlist.indexOfFirst { it.id == currentVideo.id }
+        else -> -1
+    }
+    val activeVideo = currentVideo ?: playlist.getOrNull(safeIndex)
+    val upcoming = playlist.mapIndexedNotNull { index, item ->
+        if (index == safeIndex) null else IndexedValue(index, item)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -73,6 +87,7 @@ fun QueueBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -134,7 +149,7 @@ fun QueueBottomSheet(
             }
 
             // 2. NOW PLAYING Section
-            QueueNowPlayingCard(video = currentVideo ?: playlist.getOrNull(currentIndex))
+            QueueNowPlayingCard(video = activeVideo)
 
             // 3. UP NEXT Header
             Row(
@@ -144,7 +159,7 @@ fun QueueBottomSheet(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("UP NEXT", color = Color(0xFF94A3B8), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                    if (playlist.size > 1) {
+                    if (upcoming.isNotEmpty()) {
                         Text(
                             text = "Clear All",
                             color = Color(0xFF818CF8),
@@ -172,7 +187,6 @@ fun QueueBottomSheet(
             }
 
             // 4. Up Next Track List
-            val upcoming = playlist.filterIndexed { index, _ -> index != currentIndex }
             if (upcoming.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
                     Text("Queue is empty. Videos you add will appear here.", color = Color(0x66FFFFFF), fontSize = 12.sp)
@@ -183,7 +197,10 @@ fun QueueBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(vertical = 4.dp)
                 ) {
-                    itemsIndexed(upcoming, key = { _, item -> item.id }) { _, item ->
+                    items(
+                        items = upcoming,
+                        key = { "${it.index}:${it.value.id}:${it.value.path}" }
+                    ) { (_, item) ->
                         QueueTrackItemRow(
                             video = item,
                             isPlaying = false,

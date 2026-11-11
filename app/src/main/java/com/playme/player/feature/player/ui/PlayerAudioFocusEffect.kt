@@ -7,8 +7,11 @@ import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -19,80 +22,114 @@ import com.playme.player.feature.player.model.PlayerAction
 import com.playme.player.feature.player.vm.PlayerViewModel
 
 /**
- * Keeps the player a good citizen of the device's audio stack.
+ * Single audio-focus and noisy-headset owner for both ExoPlayer and LibVLC.
  *
- * Two separate concerns, both required of any shipping player:
- *
- *  - **Audio focus** — another app (a call, a navigation prompt, music) takes
- *    the audio stream, so we pause instead of talking over it, and resume only
- *    if we were the one who paused.
- *  - **Becoming noisy** — headphones are unplugged or a Bluetooth headset
- *    disconnects; without this the audio jumps to the loudspeaker at full
- *    volume.
+ * Uses API-26+ AudioFocusRequest with an explicit main-thread Handler so focus
+ * callbacks safely read Compose state and emit MVI actions without conflicting
+ * with ExoPlayer's internal AudioFocusManager.
  */
 @Composable
 fun PlayerAudioFocusEffect(viewModel: PlayerViewModel, isPlaying: Boolean) {
     val context = LocalContext.current
-    val audioManager = remember(context) {
-        context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+    val appContext = remember(context) { context.applicationContext }
+    val audioManager = remember(appContext) {
+        appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
     }
 
-    // Read by the focus callback without restarting the effect on every tick.
     val playingState by rememberUpdatedState(isPlaying)
+    val latestViewModel by rememberUpdatedState(viewModel)
+    val hasAudioFocus = remember { mutableStateOf(false) }
     val pausedByFocus = remember { mutableStateOf(false) }
 
-    DisposableEffect(audioManager) {
-        val am = audioManager ?: return@DisposableEffect onDispose { }
+    val focusRequest = remember(audioManager) {
+        audioManager?.let {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                .build()
 
-        val attributes = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_MEDIA)
-            .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-            .build()
-
-        val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(attributes)
-            .setOnAudioFocusChangeListener { change ->
+            val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
                 when (change) {
                     AudioManager.AUDIOFOCUS_LOSS -> {
-                        pausedByFocus.value = playingState
-                        viewModel.onAction(PlayerAction.Pause)
+                        hasAudioFocus.value = false
+                        pausedByFocus.value = false
+                        latestViewModel.onAction(PlayerAction.Pause)
                     }
                     AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                        pausedByFocus.value = playingState
-                        viewModel.onAction(PlayerAction.Pause)
+                        hasAudioFocus.value = false
+                        if (playingState) pausedByFocus.value = true
+                        latestViewModel.onAction(PlayerAction.Pause)
                     }
                     AudioManager.AUDIOFOCUS_GAIN -> {
-                        // Only resume what we stopped — never start playback the
-                        // user had already paused.
+                        hasAudioFocus.value = true
                         if (pausedByFocus.value) {
                             pausedByFocus.value = false
-                            viewModel.onAction(PlayerAction.Play)
+                            latestViewModel.onAction(PlayerAction.Play)
                         }
                     }
                     AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> Unit
                 }
             }
-            .build()
 
-        am.requestAudioFocus(focusRequest)
-        onDispose { am.abandonAudioFocusRequest(focusRequest) }
+            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(attributes)
+                .setOnAudioFocusChangeListener(focusListener, Handler(Looper.getMainLooper()))
+                .build()
+        }
     }
 
-    DisposableEffect(context) {
+    fun requestFocusIfNeeded(am: AudioManager, request: AudioFocusRequest) {
+        if (hasAudioFocus.value) return
+        val granted = am.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        hasAudioFocus.value = granted
+        if (!granted) {
+            pausedByFocus.value = false
+            latestViewModel.onAction(PlayerAction.Pause)
+        }
+    }
+
+    DisposableEffect(audioManager, focusRequest) {
+        val am = audioManager
+        val request = focusRequest
+        if (am == null || request == null) return@DisposableEffect onDispose { }
+
+        if (playingState) {
+            pausedByFocus.value = false
+            requestFocusIfNeeded(am, request)
+        }
+
+        onDispose {
+            hasAudioFocus.value = false
+            pausedByFocus.value = false
+            runCatching { am.abandonAudioFocusRequest(request) }
+        }
+    }
+
+    LaunchedEffect(audioManager, focusRequest, isPlaying) {
+        val am = audioManager ?: return@LaunchedEffect
+        val request = focusRequest ?: return@LaunchedEffect
+        if (isPlaying && !hasAudioFocus.value) {
+            pausedByFocus.value = false
+            requestFocusIfNeeded(am, request)
+        }
+    }
+
+    DisposableEffect(appContext) {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(receiverContext: Context?, intent: Intent?) {
                 if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
                     pausedByFocus.value = false
-                    viewModel.onAction(PlayerAction.Pause)
+                    latestViewModel.onAction(PlayerAction.Pause)
                 }
             }
         }
+        // ContextCompat handles RECEIVER_NOT_EXPORTED compatibly on API 26-32 and enforces it on 33+.
         ContextCompat.registerReceiver(
-            context,
+            appContext,
             receiver,
             IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
-        onDispose { runCatching { context.unregisterReceiver(receiver) } }
+        onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
     }
 }

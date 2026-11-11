@@ -30,25 +30,27 @@ object PlayerPlaybackCoordinator {
 
     fun getNextTrackIndex(list: List<VideoItem>, currentIndex: Int): Int {
         if (list.isEmpty()) return 0
-        return (currentIndex + 1) % list.size
+        val safe = currentIndex.coerceIn(0, list.lastIndex)
+        return (safe + 1) % list.size
     }
 
     fun getPreviousTrackIndex(list: List<VideoItem>, currentIndex: Int): Int {
         if (list.isEmpty()) return 0
-        return if (currentIndex - 1 < 0) list.size - 1 else currentIndex - 1
+        val safe = currentIndex.coerceIn(0, list.lastIndex)
+        return if (safe == 0) list.lastIndex else safe - 1
     }
 
     fun getNextPlaybackVideo(state: PlayerState): Pair<VideoItem?, Boolean> {
+        val list = state.playlist
         return when (state.repeatMode) {
             "one" -> null to true
             "all" -> {
-                val list = state.playlist
                 if (list.isEmpty()) null to false else list[getNextTrackIndex(list, state.currentIndex)] to false
             }
             else -> {
-                val list = state.playlist
-                val idx = state.currentIndex
-                if (state.isAutoplay && idx < list.size - 1) {
+                if (list.isEmpty()) return null to false
+                val idx = state.currentIndex.coerceIn(0, list.lastIndex)
+                if (state.isAutoplay && idx < list.lastIndex) {
                     list[getNextTrackIndex(list, idx)] to false
                 } else {
                     null to false

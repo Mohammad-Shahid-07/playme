@@ -28,6 +28,22 @@ fun formatDuration(ms: Long): String {
     }
 }
 
+/** Formats audio/subtitle sync delay in seconds with Locale.US (`0.0s`, `+0.5s`, `-0.2s`). */
+fun formatDelaySeconds(
+    delayMs: Long,
+    includePlus: Boolean = false,
+    spaceBeforeUnit: Boolean = false
+): String {
+    val unit = if (spaceBeforeUnit) " s" else "s"
+    if (delayMs == 0L) return "0.0$unit"
+    val seconds = delayMs / 1000f
+    return if (includePlus && delayMs > 0L) {
+        "+%.1f%s".format(Locale.US, seconds, unit)
+    } else {
+        "%.1f%s".format(Locale.US, seconds, unit)
+    }
+}
+
 /**
  * Episode chip text: `S01E04` when both parts are known, `E04` when only the
  * episode is, `Part 2` for split files, empty when nothing was detected.

@@ -8,13 +8,21 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,6 +40,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.playme.player.feature.player.model.GestureType
+import kotlin.math.roundToInt
 
 @Composable
 fun GestureOverlayHUD(
@@ -45,6 +54,14 @@ fun GestureOverlayHUD(
     boostSpeed: Float = 2.0f,
     modifier: Modifier = Modifier
 ) {
+    val safePercent = gestureValue.coerceIn(0f, 1f)
+    val percentText = "${(safePercent * 100f).roundToInt()}%"
+    val topHudInsets = WindowInsets.statusBars
+        .union(WindowInsets.displayCutout)
+        .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+    val sideHudInsets = WindowInsets.systemBars
+        .union(WindowInsets.displayCutout)
+
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -52,7 +69,10 @@ fun GestureOverlayHUD(
         // 1. Locked Alert Toast
         GestureLockedToast(
             visible = showLockedAlert,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .windowInsetsPadding(topHudInsets)
+                .padding(top = 56.dp)
         )
 
         // 2. Quick Speed Boost Card (Center Top)
@@ -60,7 +80,10 @@ fun GestureOverlayHUD(
             isActive = isSpeedBoostActive,
             boostSpeed = boostSpeed,
             onSelectBoostSpeed = onSelectBoostSpeed,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp)
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .windowInsetsPadding(topHudInsets)
+                .padding(top = 56.dp)
         )
 
         // 3. Brightness Pill (Left Edge)
@@ -68,12 +91,15 @@ fun GestureOverlayHUD(
             visible = activeGesture == GestureType.BRIGHTNESS,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.CenterStart).padding(start = 24.dp)
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .windowInsetsPadding(sideHudInsets.only(WindowInsetsSides.Start))
+                .padding(start = 24.dp)
         ) {
             VerticalGestureCapsule(
                 icon = Icons.Rounded.BrightnessMedium,
-                valuePercent = gestureValue,
-                label = "${(gestureValue * 100).toInt()}%"
+                valuePercent = safePercent,
+                label = percentText
             )
         }
 
@@ -82,12 +108,15 @@ fun GestureOverlayHUD(
             visible = activeGesture == GestureType.VOLUME,
             enter = fadeIn(),
             exit = fadeOut(),
-            modifier = Modifier.align(Alignment.CenterEnd).padding(end = 24.dp)
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .windowInsetsPadding(sideHudInsets.only(WindowInsetsSides.End))
+                .padding(end = 24.dp)
         ) {
             VerticalGestureCapsule(
                 icon = Icons.AutoMirrored.Rounded.VolumeUp,
-                valuePercent = gestureValue,
-                label = "${(gestureValue * 100).toInt()}%"
+                valuePercent = safePercent,
+                label = percentText
             )
         }
 

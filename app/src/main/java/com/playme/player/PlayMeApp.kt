@@ -18,13 +18,20 @@ import com.playme.player.core.designsystem.PlayMeColors
 import com.playme.player.core.history.WatchProgressStore
 import com.playme.player.core.model.VideoItem
 import com.playme.player.core.player.UniversalPlayerEngine
+import com.playme.player.feature.library.model.LibraryAction
 import com.playme.player.feature.library.ui.LibraryScreen
+import com.playme.player.feature.library.vm.LibraryViewModel
 import com.playme.player.feature.navigation.BottomNavBar
 import com.playme.player.feature.navigation.MainNavTab
 import com.playme.player.feature.navigation.MainTabPlaceholderView
 import com.playme.player.feature.player.model.PlayerAction
 import com.playme.player.feature.player.ui.PlayerScreen
 import com.playme.player.feature.player.vm.PlayerViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun PlayMeApp(modifier: Modifier = Modifier) {
@@ -37,8 +44,30 @@ fun PlayMeApp(modifier: Modifier = Modifier) {
         var activeVideo by remember { mutableStateOf<VideoItem?>(null) }
         var activePlaylist by remember { mutableStateOf<List<VideoItem>>(emptyList()) }
         val playerViewModel: PlayerViewModel = viewModel()
+        val libraryViewModel: LibraryViewModel = viewModel()
         val context = LocalContext.current
-        val progressStore = remember(context) { WatchProgressStore(context) }
+        val progressStore = remember(context) { WatchProgressStore(context.applicationContext) }
+        val persistScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
+        val recordProgress = remember(progressStore, libraryViewModel, persistScope) {
+            { played: VideoItem, positionMs: Long, durationMs: Long ->
+                persistScope.launch {
+                    progressStore.record(
+                        videoId = played.id,
+                        positionMs = positionMs,
+                        durationMs = durationMs
+                    )
+                    withContext(Dispatchers.Main) {
+                        libraryViewModel.onAction(LibraryAction.RefreshVideos)
+                    }
+                }
+                Unit
+            }
+        }
+
+        DisposableEffect(playerViewModel, recordProgress) {
+            playerViewModel.setProgressRecorder(recordProgress)
+            onDispose { playerViewModel.setProgressRecorder(null) }
+        }
 
         val video = activeVideo
         if (video != null) {
@@ -50,14 +79,11 @@ fun PlayMeApp(modifier: Modifier = Modifier) {
                     playerViewModel.setInitialVideo(video, activePlaylist.ifEmpty { listOf(video) })
                     onDispose {
                         val playerState = playerViewModel.state.value
-                        playerState.currentVideo?.let { played ->
-                            progressStore.record(
-                                videoId = played.id,
-                                positionMs = playerState.currentPositionMs,
-                                durationMs = playerState.durationMs
-                            )
-                        }
+                        playerViewModel.attachEngine(null)
                         playerEngine.release()
+                        playerState.currentVideo?.let { played ->
+                            recordProgress(played, playerState.currentPositionMs, playerState.durationMs)
+                        }
                     }
                 }
 

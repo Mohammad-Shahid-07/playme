@@ -1,7 +1,9 @@
 <resources>
-    <style name="Theme.PlayMe" parent="android:Theme.Material.NoActionBar">
+    <style name="Base.Theme.PlayMe" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@color/surface_dark</item>
         <item name="android:navigationBarColor">@color/surface_dark</item>
         <item name="android:windowBackground">@color/surface_dark</item>
     </style>
+
+    <style name="Theme.PlayMe" parent="Base.Theme.PlayMe" />
 </resources>

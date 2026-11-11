@@ -1,7 +1,5 @@
 package com.playme.player.feature.player.ui
 
-import android.app.Activity
-import android.content.pm.ActivityInfo
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -11,30 +9,31 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.playme.player.feature.player.model.GestureType
 import com.playme.player.feature.player.model.PlayerAction
 import com.playme.player.feature.player.vm.PlayerViewModel
+import kotlinx.coroutines.delay
 
 @Composable
 fun PlayerScreen(
@@ -44,28 +43,31 @@ fun PlayerScreen(
     videoSurface: @Composable (() -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsState()
-    val context = LocalContext.current
-    val activity = context as? Activity
+    var lockedAlertTick by remember { mutableIntStateOf(0) }
+    var showLockedAlert by remember { mutableStateOf(false) }
+
+    LaunchedEffect(lockedAlertTick, state.isLocked) {
+        if (!state.isLocked || lockedAlertTick == 0) {
+            showLockedAlert = false
+        } else {
+            showLockedAlert = true
+            delay(1400L)
+            showLockedAlert = false
+        }
+    }
 
     BackHandler {
-        if (state.isFullscreen) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            viewModel.onAction(PlayerAction.ToggleFullscreen)
-        } else {
-            onClose()
+        when {
+            state.isLocked -> viewModel.onAction(PlayerAction.ShowToast("Controls Locked"))
+            state.isSpeedPickerOpen -> viewModel.onAction(PlayerAction.SetSpeedPickerOpen(false))
+            state.isSettingsOpen -> viewModel.onAction(PlayerAction.SetSettingsOpen(false))
+            state.isQueueOpen -> viewModel.onAction(PlayerAction.SetQueueOpen(false))
+            state.isFullscreen -> viewModel.onAction(PlayerAction.ToggleFullscreen)
+            else -> onClose()
         }
     }
 
-    DisposableEffect(state.isFullscreen) {
-        if (state.isFullscreen) {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-        onDispose {
-            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-        }
-    }
+    PlayerFullscreenSystemBarsEffect(isFullscreen = state.isFullscreen)
 
     // Android System Volume & Window Brightness Sync
     PlayerSystemSyncEffect(
@@ -87,6 +89,8 @@ fun PlayerScreen(
             aspectRatioMode = state.aspectRatioMode,
             isControlsVisible = state.isControlsVisible && !state.isLocked,
             currentSubtitle = state.currentSubtitle,
+            ambientGlowEnabled = state.ambientGlowEnabled,
+            subtitleSize = state.subtitleSize,
             videoSurface = videoSurface ?: {
                 VideoSurfaceView(
                     engine = viewModel.engine,
@@ -113,7 +117,7 @@ fun PlayerScreen(
             onGestureUpdate = { type, value -> viewModel.onAction(PlayerAction.UpdateGesture(type, value)) },
             onGestureEnd = { viewModel.onAction(PlayerAction.EndGesture) },
             onSeekCommit = { targetMs -> viewModel.onAction(PlayerAction.SeekTo(targetMs)) },
-            onLockedTouchAlert = { viewModel.onAction(PlayerAction.ShowToast("Controls Locked")) }
+            onLockedTouchAlert = { lockedAlertTick++ }
         )
 
         // 3. Gesture Indicator Overlays (Volume, Brightness, Scrub, 2x Speed Pill)
@@ -124,7 +128,7 @@ fun PlayerScreen(
             seekTargetPosMs = state.seekPreviewPositionMs,
             durationMs = state.durationMs,
             onSelectBoostSpeed = { speed -> viewModel.onAction(PlayerAction.SetSpeedBoostValue(speed)) },
-            showLockedAlert = state.isLocked && state.activeGesture != GestureType.NONE,
+            showLockedAlert = showLockedAlert && state.isLocked,
             boostSpeed = state.boostSpeed
         )
 
@@ -134,7 +138,7 @@ fun PlayerScreen(
             modifier = Modifier.align(Alignment.Center)
         )
 
-        // 4. Top HUD Bar
+        // 4. Top HUD Bar (bar owns statusBars + displayCutout padding inside its gradient)
         AnimatedVisibility(
             visible = state.isControlsVisible && !state.isLocked,
             enter = fadeIn() + slideInVertically { -it },
@@ -148,8 +152,7 @@ fun PlayerScreen(
                 format = state.currentVideo?.format ?: "MP4",
                 onBackClick = onClose,
                 onQueueClick = { viewModel.onAction(PlayerAction.SetQueueOpen(true)) },
-                onOpenSettings = { tab -> viewModel.onAction(PlayerAction.SetSettingsOpen(true, tab)) },
-                modifier = Modifier.statusBarsPadding()
+                onOpenSettings = { tab -> viewModel.onAction(PlayerAction.SetSettingsOpen(true, tab)) }
             )
         }
 
@@ -169,11 +172,17 @@ fun PlayerScreen(
                 onSnapshot = { viewModel.onAction(PlayerAction.ShowToast("Snapshot Saved")) },
                 onToggleAbLoop = { viewModel.onAction(PlayerAction.ToggleAbLoop) },
                 onRotate = { viewModel.onAction(PlayerAction.ToggleFullscreen) },
-                modifier = Modifier.padding(end = 12.dp)
+                modifier = Modifier
+                    .windowInsetsPadding(
+                        WindowInsets.systemBars
+                            .union(WindowInsets.displayCutout)
+                            .only(WindowInsetsSides.End)
+                    )
+                    .padding(end = 12.dp)
             )
         }
 
-        // 6. Bottom HUD Bar (Scrubber & Hero Transport Deck)
+        // 6. Bottom HUD Bar (bar owns navigationBars + displayCutout padding inside its gradient)
         AnimatedVisibility(
             visible = state.isControlsVisible && !state.isLocked,
             enter = fadeIn() + slideInVertically { it },
@@ -192,98 +201,20 @@ fun PlayerScreen(
                 onPlayNext = { viewModel.onAction(PlayerAction.PlayNext) },
                 onFullscreenToggle = { viewModel.onAction(PlayerAction.ToggleFullscreen) },
                 videoId = state.currentVideo?.id,
-                filePath = state.currentVideo?.path,
-                modifier = Modifier.navigationBarsPadding()
+                filePath = state.currentVideo?.path
             )
         }
 
         // 7. Floating Feedback Toast Pill
-        state.toastMessage?.let { msg ->
-            Box(
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .padding(bottom = 60.dp)
-                    .shadow(16.dp, RoundedCornerShape(999.dp), spotColor = Color.Black)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(Color(0xE60C0E18))
-                    .border(1.dp, Color(0x33757BF8), RoundedCornerShape(999.dp))
-                    .padding(horizontal = 20.dp, vertical = 9.dp)
-            ) {
-                Text(
-                    text = msg,
-                    color = Color(0xFFE2E8F0),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        // 8. Slide-Up Playlist Queue Drawer
-        QueueBottomSheet(
-            isOpen = state.isQueueOpen,
-            onClose = { viewModel.onAction(PlayerAction.SetQueueOpen(false)) },
-            playlist = state.playlist,
-            currentVideo = state.currentVideo,
-            currentIndex = state.currentIndex,
-            isShuffle = state.isShuffle,
-            repeatMode = state.repeatMode,
-            isAutoplay = state.isAutoplay,
-            onToggleShuffle = { viewModel.onAction(PlayerAction.ToggleShuffle) },
-            onCycleRepeatMode = { viewModel.onAction(PlayerAction.CycleRepeatMode) },
-            onToggleAutoplay = { viewModel.onAction(PlayerAction.ToggleAutoplay) },
-            onSelectTrack = { video -> viewModel.onAction(PlayerAction.PlayTrack(video)) },
-            onRemoveTrack = { id -> viewModel.onAction(PlayerAction.RemoveFromQueue(id)) },
-            onClearQueue = { viewModel.onAction(PlayerAction.ClearQueue) }
+        PlayerToastPill(
+            message = state.toastMessage,
+            modifier = Modifier.align(Alignment.Center)
         )
 
-        // 9. Side/Bottom Settings Drawer (Delays, Decoder, Aspect Ratio, Audio FX)
-        PlayerSettingsSidebar(
-            isOpen = state.isSettingsOpen,
-            onClose = { viewModel.onAction(PlayerAction.SetSettingsOpen(false)) },
-            audioDelayMs = state.audioDelayMs,
-            subtitleDelayMs = state.subtitleDelayMs,
-            decoderMode = state.decoderMode,
-            aspectRatioMode = state.aspectRatioMode,
-            isDialogueClarity = state.isDialogueClarityActive,
-            isAmbientGlow = state.ambientGlowEnabled,
-            sleepTimerMinutes = state.sleepTimerMinutes,
-            backgroundPlay = state.backgroundPlayEnabled,
-            playbackSpeed = state.playbackSpeed,
-            selectedAudio = state.selectedAudioTrack,
-            selectedSubtitle = state.selectedSubtitleTrack,
-            subtitleSize = state.subtitleSize,
-            volumeBoost = state.volumeBoostPercent,
-            brightnessPercent = state.brightnessPercent,
-            availableAudioTracks = state.availableAudioTracks,
-            availableSubtitleTracks = state.availableSubtitleTracks,
-            initialTab = when (state.activeSettingsTab) {
-                com.playme.player.feature.player.model.SettingsTab.SUBTITLES -> "subtitles"
-                com.playme.player.feature.player.model.SettingsTab.AUDIO -> "audio"
-                else -> "root"
-            },
-            onAdjustAudioDelay = { delta -> viewModel.onAction(PlayerAction.AdjustAudioDelay(delta)) },
-            onAdjustSubtitleDelay = { delta -> viewModel.onAction(PlayerAction.AdjustSubtitleDelay(delta)) },
-            onResetDelays = { viewModel.onAction(PlayerAction.ResetDelays) },
-            onSelectDecoderMode = { mode -> viewModel.onAction(PlayerAction.SetDecoderMode(mode)) },
-            onSelectAspectRatio = { mode -> viewModel.onAction(PlayerAction.SetAspectRatio(mode)) },
-            onToggleDialogueClarity = { viewModel.onAction(PlayerAction.ToggleDialogueClarity) },
-            onVolumeBoostChange = { boost -> viewModel.onAction(PlayerAction.SetVolumeBoost(boost)) },
-            onToggleAmbientGlow = { viewModel.onAction(PlayerAction.ToggleAmbientGlow) },
-            onBrightnessChange = { b -> viewModel.onAction(PlayerAction.SetBrightness(b)) },
-            onToggleBackgroundPlay = { viewModel.onAction(PlayerAction.ToggleBackgroundPlay) },
-            onSelectSpeed = { speed -> viewModel.onAction(PlayerAction.SetSpeed(speed)) },
-            onSelectSleepTimer = { minutes -> viewModel.onAction(PlayerAction.SetSleepTimer(minutes)) },
-            onSelectAudioTrack = { track -> viewModel.onAction(PlayerAction.SelectAudioTrack(track)) },
-            onSelectSubtitleTrack = { track -> viewModel.onAction(PlayerAction.SelectSubtitleTrack(track)) },
-            onSelectSubtitleSize = { size -> viewModel.onAction(PlayerAction.SetSubtitleSize(size)) }
-        )
-
-        // 10. Playback Speed Selector Studio Dock
-        PlaybackSpeedStudioDock(
-            isOpen = state.isSpeedPickerOpen,
-            onClose = { viewModel.onAction(PlayerAction.SetSpeedPickerOpen(false)) },
-            speed = state.playbackSpeed,
-            onSpeedChange = { speed -> viewModel.onAction(PlayerAction.SetSpeed(speed)) }
+        // 8-10. Queue Drawer, Settings Sidebar & Speed Studio Dock
+        PlayerModalOverlays(
+            state = state,
+            onAction = viewModel::onAction
         )
     }
 }

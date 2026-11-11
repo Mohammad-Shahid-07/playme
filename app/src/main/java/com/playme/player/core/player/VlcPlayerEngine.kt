@@ -2,6 +2,9 @@ package com.playme.player.core.player
 
 import android.content.Context
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import android.view.SurfaceView
 import androidx.media3.exoplayer.ExoPlayer
@@ -11,6 +14,7 @@ import com.playme.player.feature.player.model.DecoderMode
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
+import org.videolan.libvlc.util.VLCVideoLayout
 
 class VlcPlayerEngine(
     private val context: Context
@@ -20,85 +24,82 @@ class VlcPlayerEngine(
         private const val TAG = "VlcPlayerEngine"
     }
 
+    private val mainHandler = Handler(Looper.getMainLooper())
     private var libVlc: LibVLC? = null
     private var mediaPlayer: MediaPlayer? = null
     private var engineListener: PlayerEngineListener? = null
     private var savedVolume: Float = 1.0f
+    private var savedVolumeBoost: Int = 100
+    private var savedMuted: Boolean = false
     private var attachedSurfaceView: SurfaceView? = null
-    private var vlcVideoLayout: org.videolan.libvlc.util.VLCVideoLayout? = null
-    private var attachedLayout: org.videolan.libvlc.util.VLCVideoLayout? = null
-    private var pfd: android.os.ParcelFileDescriptor? = null
+    private var vlcVideoLayout: VLCVideoLayout? = null
+    private var attachedLayout: VLCVideoLayout? = null
+    private var pendingAttachLayout: VLCVideoLayout? = null
+    private var pfd: ParcelFileDescriptor? = null
     private var decoderMode: DecoderMode = DecoderMode.HW
-
-    // A seek requested before the media is parsed is ignored by LibVLC.
-    // Hold it until the Playing event, then apply it.
     private var pendingSeekMs: Long = 0L
+    private var pendingError: String? = null
+    @Volatile private var shouldPlay: Boolean = true
+    @Volatile private var hasEnded: Boolean = false
+    @Volatile private var isReleased: Boolean = false
 
     override val player: ExoPlayer? = null
     override val engineType: EngineType = EngineType.VLC
 
-    // NOTE: property initialisers run in declaration order. This listener must
-    // be declared before the `init` block below, otherwise LibVLC is registered
-    // with a null listener and the player never reports Playing/TimeChanged —
-    // video plays, but the HUD stays frozen at 00:00.
+    // Declared before `init` so MediaPlayer receives an initialized listener.
     private val vlcEventListener = MediaPlayer.EventListener { event ->
-        val mp = mediaPlayer ?: return@EventListener
-        when (event.type) {
-            MediaPlayer.Event.TimeChanged -> {
-                val current = mp.time.coerceAtLeast(0L)
-                val duration = mp.length.coerceAtLeast(0L)
-                engineListener?.onPositionChanged(current, duration, 0L)
-            }
-            MediaPlayer.Event.Playing -> {
-                Log.d(TAG, "VLC event: Playing")
-                if (pendingSeekMs > 0L) {
-                    val target = pendingSeekMs
-                    pendingSeekMs = 0L
-                    mp.time = target
-                }
-                engineListener?.onPlaybackStateChanged(isPlaying = true, isBuffering = false)
-                dispatchTracks()
-            }
-            MediaPlayer.Event.Paused -> {
-                Log.d(TAG, "VLC event: Paused")
-                engineListener?.onPlaybackStateChanged(isPlaying = false, isBuffering = false)
-            }
-            MediaPlayer.Event.Buffering -> {
-                val isBuffering = event.buffering < 100f
-                engineListener?.onPlaybackStateChanged(isPlaying = mp.isPlaying, isBuffering = isBuffering)
-            }
-            MediaPlayer.Event.EndReached -> {
-                Log.d(TAG, "VLC event: EndReached")
-                engineListener?.onPlaybackEnded()
-            }
-            MediaPlayer.Event.ESAdded -> dispatchTracks()
-            MediaPlayer.Event.EncounteredError -> {
-                Log.e(TAG, "VLC event: EncounteredError")
-                engineListener?.onError("VLC playback error encountered")
-            }
+        if (Looper.myLooper() == Looper.getMainLooper()) handleVlcEvent(event)
+        else mainHandler.post { handleVlcEvent(event) }
+    }
+
+    init {
+        try {
+            val options = arrayListOf("--no-sub-autodetect-file", "--swscale-mode=0", "--network-caching=1500")
+            libVlc = LibVLC(context.applicationContext, options)
+            mediaPlayer = MediaPlayer(libVlc).apply { setEventListener(vlcEventListener) }
+        } catch (e: Throwable) {
+            Log.e(TAG, "LibVLC initialization failed", e)
+            pendingError = "LibVLC initialization failed: ${e.message}"
         }
     }
 
-    // Declared after the listener so the property above is already initialised.
-    init {
-        initLibVlc()
-    }
+    private fun activeMediaPlayer(): MediaPlayer? =
+        mediaPlayer?.takeIf { !isReleased && !it.isReleased }
 
-    private fun initLibVlc() {
-        try {
-            val options = arrayListOf(
-                "--no-sub-autodetect-file",
-                "--swscale-mode=0",
-                "--network-caching=1500"
-            )
-            libVlc = LibVLC(context, options)
-            mediaPlayer = MediaPlayer(libVlc).apply {
-                setEventListener(vlcEventListener)
+    private fun handleVlcEvent(event: MediaPlayer.Event) {
+        val mp = activeMediaPlayer() ?: return
+        when (event.type) {
+            MediaPlayer.Event.Opening ->
+                engineListener?.onPlaybackStateChanged(isPlaying = shouldPlay, isBuffering = true)
+            MediaPlayer.Event.TimeChanged ->
+                engineListener?.onPositionChanged(mp.time.coerceAtLeast(0L), mp.length.coerceAtLeast(0L), 0L)
+            MediaPlayer.Event.Playing -> {
+                hasEnded = false
+                if (!shouldPlay) {
+                    if (mp.isPlaying) mp.pause()
+                    engineListener?.onPlaybackStateChanged(isPlaying = false, isBuffering = false)
+                } else {
+                    if (pendingSeekMs > 0L) {
+                        mp.time = pendingSeekMs
+                        pendingSeekMs = 0L
+                    }
+                    engineListener?.onPlaybackStateChanged(isPlaying = true, isBuffering = false)
+                }
+                dispatchTracks()
             }
-            Log.d(TAG, "LibVLC initialized successfully")
-        } catch (e: Throwable) {
-            Log.e(TAG, "LibVLC initialization failed", e)
-            engineListener?.onError("LibVLC initialization failed: ${e.message}")
+            MediaPlayer.Event.Paused ->
+                engineListener?.onPlaybackStateChanged(isPlaying = false, isBuffering = false)
+            MediaPlayer.Event.Buffering ->
+                engineListener?.onPlaybackStateChanged(isPlaying = mp.isPlaying || shouldPlay, isBuffering = event.buffering < 100f)
+            MediaPlayer.Event.EndReached -> {
+                hasEnded = true
+                pendingSeekMs = 0L
+                engineListener?.onPlaybackStateChanged(isPlaying = false, isBuffering = false)
+                engineListener?.onPlaybackEnded()
+            }
+            MediaPlayer.Event.ESAdded -> dispatchTracks()
+            MediaPlayer.Event.EncounteredError ->
+                engineListener?.onError("VLC playback error encountered")
         }
     }
 
@@ -109,50 +110,55 @@ class VlcPlayerEngine(
 
     override fun setListener(listener: PlayerEngineListener) {
         this.engineListener = listener
+        pendingError?.let { msg -> pendingError = null; listener.onError(msg) }
     }
 
-    fun attachVlcLayout(layout: org.videolan.libvlc.util.VLCVideoLayout) {
+    fun attachVlcLayout(layout: VLCVideoLayout) {
+        if (isReleased) return
         this.vlcVideoLayout = layout
-        if (attachedLayout === layout && mediaPlayer?.vlcVout?.areViewsAttached() == true) {
+        if (attachedLayout === layout && mediaPlayer?.vlcVout?.areViewsAttached() == true) return
+        if (layout.isAttachedToWindow) {
+            attachVlcViews(layout)
             return
         }
-        // Posting waits for the view to be attached to the window, which is
-        // required before LibVLC can create a SurfaceView-backed video output.
-        layout.post { attachVlcViews(layout) }
+        if (pendingAttachLayout === layout) return
+        pendingAttachLayout = layout
+        layout.post {
+            if (pendingAttachLayout === layout) pendingAttachLayout = null
+            attachVlcViews(layout)
+        }
     }
 
-    private fun attachVlcViews(layout: org.videolan.libvlc.util.VLCVideoLayout) {
-        if (vlcVideoLayout !== layout) return
-        val mp = mediaPlayer ?: return
-        // Re-attaching tears the video output down mid-playback; Compose calls
-        // the update block on every recomposition, so this must be idempotent.
+    private fun attachVlcViews(layout: VLCVideoLayout) {
+        val mp = activeMediaPlayer() ?: return
+        if (vlcVideoLayout !== layout || !layout.isAttachedToWindow) return
         if (attachedLayout === layout && mp.vlcVout.areViewsAttached()) return
         try {
-            if (mp.vlcVout.areViewsAttached()) {
-                mp.detachViews()
-            }
-            // useTextureView = false: a TextureView is drawn above all Compose
-            // content, hiding the player HUD and swallowing taps. A SurfaceView
-            // renders behind the window, so the controls stay interactive.
-            mp.attachViews(layout, null, false, true)
+            if (mp.vlcVout.areViewsAttached()) mp.detachViews()
+            // enableSubtitles = true, useTextureView = false: SurfaceView stays behind Compose HUD.
+            mp.attachViews(layout, null, true, false)
             attachedLayout = layout
-            Log.d(TAG, "Attached VLCVideoLayout with useTextureView=false")
         } catch (e: Throwable) {
             Log.e(TAG, "Failed attaching VLC views", e)
         }
     }
 
     fun detachVlcLayout() {
-        try {
-            mediaPlayer?.detachViews()
-        } catch (_: Throwable) {}
+        pendingAttachLayout = null
+        runCatching {
+            val mp = mediaPlayer
+            if (mp != null && !mp.isReleased && mp.vlcVout.areViewsAttached()) mp.detachViews()
+        }
         vlcVideoLayout = null
         attachedLayout = null
     }
 
     override fun attachSurface(surfaceView: SurfaceView) {
+        val mp = activeMediaPlayer() ?: return
+        if (attachedSurfaceView === surfaceView && mp.vlcVout.areViewsAttached()) return
         this.attachedSurfaceView = surfaceView
-        mediaPlayer?.vlcVout?.apply {
+        mp.vlcVout.apply {
+            if (areViewsAttached()) detachViews()
             setVideoView(surfaceView)
             attachViews()
         }
@@ -160,55 +166,34 @@ class VlcPlayerEngine(
 
     override fun detachSurface() {
         detachVlcLayout()
-        mediaPlayer?.vlcVout?.detachViews()
         attachedSurfaceView = null
     }
 
-    override fun playVideo(video: VideoItem) = playVideoAt(video, 0L)
+    override fun playVideo(video: VideoItem) = playVideoAt(video, 0L, true)
 
-    /**
-     * Starts a clip and seeks once LibVLC reports Playing. A seek issued
-     * immediately after play() is ignored while the media is still opening.
-     */
-    fun playVideoAt(video: VideoItem, positionMs: Long) {
-        val vlc = libVlc ?: return
-        val mp = mediaPlayer ?: return
+    fun playVideoAt(video: VideoItem, positionMs: Long, autoPlay: Boolean = true) {
+        if (isReleased) return
+        val vlc = libVlc ?: run {
+            engineListener?.onError(pendingError ?: "LibVLC is not initialized")
+            return
+        }
+        val mp = activeMediaPlayer() ?: return
+
         val uri = MediaUriResolver.resolve(context, video)
-        Log.d(TAG, "playVideo in VLC: uri=$uri, path=${video.path}, seek=$positionMs")
+        shouldPlay = autoPlay
+        hasEnded = false
         pendingSeekMs = positionMs.coerceAtLeast(0L)
+        closePfd()
 
         try {
-            pfd?.close()
-            pfd = null
-        } catch (_: Throwable) {}
-
-        try {
-            val media = if (uri.scheme == "content") {
-                try {
-                    val descriptor = context.contentResolver.openFileDescriptor(uri, "r")
-                    pfd = descriptor
-                    if (descriptor != null) {
-                        Media(vlc, descriptor.fileDescriptor)
-                    } else {
-                        Media(vlc, uri)
-                    }
-                } catch (e: Throwable) {
-                    Log.w(TAG, "openFileDescriptor fallback to uri: ${e.message}")
-                    Media(vlc, uri)
-                }
-            } else if (uri.scheme == "file") {
-                Media(vlc, uri.path ?: video.path)
-            } else {
-                Media(vlc, uri)
-            }
-
+            if (mp.hasMedia()) mp.stop()
+            val media = openMedia(vlc, uri, video.path)
             media.setHWDecoderEnabled(decoderMode == DecoderMode.HW, false)
             media.addOption(":no-sub-autodetect-file")
             mp.media = media
             media.release()
 
-            vlcVideoLayout?.let { attachVlcLayout(it) }
-            attachedSurfaceView?.let { attachSurface(it) }
+            vlcVideoLayout?.let { attachVlcLayout(it) } ?: attachedSurfaceView?.let { attachSurface(it) }
             mp.play()
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to load video in VLC", e)
@@ -216,67 +201,96 @@ class VlcPlayerEngine(
         }
     }
 
-    override fun play() { mediaPlayer?.play() }
-    override fun pause() { mediaPlayer?.pause() }
+    private fun openMedia(vlc: LibVLC, uri: Uri, fallbackPath: String): Media {
+        if (uri.scheme == "content") {
+            runCatching { context.contentResolver.openFileDescriptor(uri, "r") }
+                .getOrNull()
+                ?.let { descriptor ->
+                    pfd = descriptor
+                    return Media(vlc, descriptor.fileDescriptor)
+                }
+        } else if (uri.scheme == "file" || (uri == Uri.EMPTY && fallbackPath.isNotBlank())) {
+            return Media(vlc, uri.path ?: fallbackPath)
+        }
+        return Media(vlc, uri)
+    }
+
+    private fun closePfd() {
+        runCatching { pfd?.close() }
+        pfd = null
+    }
+
+    override fun play() {
+        shouldPlay = true
+        val mp = activeMediaPlayer()?.takeIf { it.hasMedia() } ?: return
+        if (hasEnded) {
+            hasEnded = false
+            mp.stop()
+            mp.play()
+        } else if (!mp.isPlaying) {
+            mp.play()
+        }
+    }
+
+    override fun pause() {
+        shouldPlay = false
+        val mp = activeMediaPlayer()?.takeIf { it.hasMedia() } ?: return
+        // LibVLC's pause() toggles state on some builds; only pause when playing.
+        if (mp.isPlaying) mp.pause()
+    }
+
     override fun seekTo(positionMs: Long) {
-        val mp = mediaPlayer ?: return
-        if (mp.length <= 0L && !mp.isPlaying) {
-            pendingSeekMs = positionMs
-        } else {
-            mp.time = positionMs
-        }
-    }
-    override fun setSpeed(speed: Float) { mediaPlayer?.rate = speed }
-    override fun setVolume(volume: Float) {
-        savedVolume = volume
-        mediaPlayer?.volume = (volume * 100).toInt().coerceIn(0, 100)
-    }
-    override fun setMuted(muted: Boolean) {
-        mediaPlayer?.volume = if (muted) 0 else (savedVolume * 100).toInt().coerceIn(0, 100)
-    }
-    override fun setDecoderMode(mode: DecoderMode) {
-        decoderMode = mode
+        val mp = activeMediaPlayer() ?: return
+        val clamped = positionMs.coerceAtLeast(0L)
+        if (hasEnded || (mp.length <= 0L && !mp.isPlaying)) pendingSeekMs = clamped
+        else mp.time = clamped
     }
 
-    override fun setAspectRatio(mode: AspectRatioMode) {
-        val mp = mediaPlayer ?: return
-        when (mode) {
-            AspectRatioMode.BEST_FIT -> { mp.aspectRatio = null; mp.scale = 0f }
-            AspectRatioMode.FIT_SCREEN -> { mp.aspectRatio = null; mp.scale = 1.25f }
-            AspectRatioMode.FILL -> { mp.aspectRatio = null; mp.scale = 1.0f }
-            AspectRatioMode.SIXTEEN_NINE -> { mp.aspectRatio = "16:9"; mp.scale = 0f }
-            AspectRatioMode.FOUR_THREE -> { mp.aspectRatio = "4:3"; mp.scale = 0f }
-            AspectRatioMode.ORIGINAL -> { mp.aspectRatio = null; mp.scale = 1.0f }
-        }
-    }
-
+    override fun setSpeed(speed: Float) { mediaPlayer?.rate = speed.coerceAtLeast(0.1f) }
+    override fun setVolume(volume: Float) { savedVolume = volume; applyVlcVolume() }
+    override fun setMuted(muted: Boolean) { savedMuted = muted; applyVlcVolume() }
+    override fun setVolumeBoost(percent: Int) { savedVolumeBoost = percent; applyVlcVolume() }
+    override fun setDecoderMode(mode: DecoderMode) { decoderMode = mode }
     override fun setAudioDelay(delayMs: Long) { mediaPlayer?.setAudioDelay(delayMs * 1000L) }
     override fun setSubtitleDelay(delayMs: Long) { mediaPlayer?.setSpuDelay(delayMs * 1000L) }
 
+    override fun setAspectRatio(mode: AspectRatioMode) {
+        mediaPlayer?.videoScale = when (mode) {
+            AspectRatioMode.BEST_FIT -> MediaPlayer.ScaleType.SURFACE_BEST_FIT
+            AspectRatioMode.FIT_SCREEN -> MediaPlayer.ScaleType.SURFACE_FIT_SCREEN
+            AspectRatioMode.FILL -> MediaPlayer.ScaleType.SURFACE_FILL
+            AspectRatioMode.SIXTEEN_NINE -> MediaPlayer.ScaleType.SURFACE_16_9
+            AspectRatioMode.FOUR_THREE -> MediaPlayer.ScaleType.SURFACE_4_3
+            AspectRatioMode.ORIGINAL -> MediaPlayer.ScaleType.SURFACE_ORIGINAL
+        }
+    }
+
     override fun selectAudioTrack(trackId: String) {
-        trackId.toIntOrNull()?.let { id -> mediaPlayer?.audioTrack = id }
+        val id = if (trackId == "default") mediaPlayer?.audioTracks?.firstOrNull { it.id != -1 }?.id else trackId.toIntOrNull()
+        id?.let { mediaPlayer?.audioTrack = it }
     }
 
     override fun selectSubtitleTrack(trackId: String) {
-        trackId.toIntOrNull()?.let { id -> mediaPlayer?.spuTrack = id }
+        mediaPlayer?.spuTrack = if (trackId == "none") -1 else trackId.toIntOrNull() ?: return
     }
 
-    override fun setVolumeBoost(percent: Int) {
-        val target = ((savedVolume * percent / 100f) * 100).toInt().coerceIn(0, 200)
-        mediaPlayer?.volume = target
+    private fun applyVlcVolume() {
+        mediaPlayer?.volume = if (savedMuted) 0 else ((savedVolume * savedVolumeBoost / 100f) * 100).toInt().coerceIn(0, 200)
     }
 
     override fun release() {
+        isReleased = true
+        engineListener = null
+        pendingAttachLayout = null
         detachSurface()
-        try {
-            pfd?.close()
-            pfd = null
-        } catch (_: Throwable) {}
-        mediaPlayer?.setEventListener(null)
-        mediaPlayer?.stop()
-        mediaPlayer?.release()
+        closePfd()
+        mediaPlayer?.let { mp ->
+            mp.setEventListener(null)
+            runCatching { mp.stop() }
+            runCatching { mp.release() }
+        }
         mediaPlayer = null
-        libVlc?.release()
+        runCatching { libVlc?.release() }
         libVlc = null
     }
 }

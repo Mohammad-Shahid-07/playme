@@ -8,124 +8,74 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
-import com.playme.player.core.designsystem.PlayMeColors
 import com.playme.player.core.designsystem.PlayMeTheme
-import com.playme.player.feature.library.ui.LibraryScreen
-import com.playme.player.feature.navigation.BottomNavBar
-import com.playme.player.feature.navigation.MainNavTab
-import com.playme.player.feature.navigation.MainTabPlaceholderView
+import com.playme.player.core.permissions.StorageAccess
+import com.playme.player.feature.permissions.StorageAccessGate
 
 class MainActivity : ComponentActivity() {
 
-    private val requestPermissionLauncher = registerForActivityResult(
+    /**
+     * Re-read on every resume so returning from the system Settings toggle
+     * unlocks the library immediately, without an app restart.
+     */
+    private var storageAccessGranted by mutableStateOf(false)
+
+    private val mediaPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
-        // Scans auto-trigger in LibraryViewModel
+        // The library scan reacts to whatever access was actually granted.
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        checkAndRequestStoragePermissions()
+        storageAccessGranted = StorageAccess.hasAllFilesAccess()
+        requestMediaPermissions()
 
         setContent {
             PlayMeTheme {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(PlayMeColors.Workbench)
-                ) {
-                    var currentTab by remember { mutableStateOf(MainNavTab.VIDEO) }
-                    var activeVideo by remember { mutableStateOf<com.playme.player.core.model.VideoItem?>(null) }
-                    var activePlaylist by remember { mutableStateOf<List<com.playme.player.core.model.VideoItem>>(emptyList()) }
-                    val playerViewModel: com.playme.player.feature.player.vm.PlayerViewModel =
-                        androidx.lifecycle.viewmodel.compose.viewModel()
-
-                    val video = activeVideo
-                    if (video != null) {
-                        key(video.id) {
-                            val context = androidx.compose.ui.platform.LocalContext.current
-                            val playerEngine = remember(video.id) {
-                                com.playme.player.core.player.UniversalPlayerEngine(context)
-                            }
-
-                            androidx.compose.runtime.DisposableEffect(video.id, playerEngine) {
-                                playerViewModel.attachEngine(playerEngine)
-                                playerViewModel.setInitialVideo(video, activePlaylist.ifEmpty { listOf(video) })
-                                onDispose {
-                                    playerEngine.release()
-                                }
-                            }
-
-                            com.playme.player.feature.player.ui.PlayerScreen(
-                                viewModel = playerViewModel,
-                                onClose = {
-                                    playerViewModel.onAction(com.playme.player.feature.player.model.PlayerAction.Pause)
-                                    activeVideo = null
-                                }
-                            )
-                        }
-                    } else {
-                        when (currentTab) {
-                            MainNavTab.VIDEO -> {
-                                LibraryScreen(
-                                    onVideoClick = { clickedVideo, playlist ->
-                                        activePlaylist = playlist
-                                        playerViewModel.prepareVideo(clickedVideo, playlist)
-                                        activeVideo = clickedVideo
-                                    }
-                                )
-                            }
-                            else -> {
-                                MainTabPlaceholderView(tab = currentTab)
-                            }
-                        }
-
-                        // Floating Glass Bottom Navigation Dock
-                        BottomNavBar(
-                            activeTab = currentTab,
-                            onTabSelected = { currentTab = it },
-                            onBigPlayClick = { /* Quick play */ },
-                            modifier = Modifier.align(Alignment.BottomCenter)
-                        )
-                    }
+                if (StorageAccess.isRequired() && !storageAccessGranted) {
+                    StorageAccessGate(
+                        onGrantAccess = { StorageAccess.openSettings(this@MainActivity) },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    PlayMeApp()
                 }
             }
         }
     }
 
-    private fun checkAndRequestStoragePermissions() {
-        val permissionsToRequest = mutableListOf<String>()
+    override fun onResume() {
+        super.onResume()
+        storageAccessGranted = StorageAccess.hasAllFilesAccess()
+    }
+
+    private fun requestMediaPermissions() {
+        val permissions = mutableListOf<String>()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO)
-                != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.READ_MEDIA_VIDEO)
+            if (!isGranted(Manifest.permission.READ_MEDIA_VIDEO)) {
+                permissions += Manifest.permission.READ_MEDIA_VIDEO
             }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.READ_MEDIA_AUDIO)
+            if (!isGranted(Manifest.permission.READ_MEDIA_AUDIO)) {
+                permissions += Manifest.permission.READ_MEDIA_AUDIO
             }
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
+        } else if (!isGranted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            permissions += Manifest.permission.READ_EXTERNAL_STORAGE
         }
 
-        if (permissionsToRequest.isNotEmpty()) {
-            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+        if (permissions.isNotEmpty()) {
+            mediaPermissionLauncher.launch(permissions.toTypedArray())
         }
     }
+
+    private fun isGranted(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 }

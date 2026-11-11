@@ -3,7 +3,6 @@ package com.playme.player.feature.permissions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,20 +30,37 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.playme.player.core.designsystem.PlayMeColors
+import com.playme.player.core.permissions.StorageAccess
 
 /**
- * Blocking first-run step for All Files Access.
+ * Blocking first-run step for storage permission.
  *
- * Android cannot grant this with a runtime dialog, so the only correct flow is
- * a single, explicit screen that sends the user to the system toggle. There is
- * deliberately no dismiss action: without the grant the library cannot see
- * videos stored in `.nomedia` folders.
+ * On Android 11+ this sends the user to the All Files Access toggle; on
+ * Android 10 and below it triggers the runtime storage dialog or App Settings
+ * when permanently denied. There is no dismiss action because scanning without
+ * storage permission yields an empty library.
  */
 @Composable
 fun StorageAccessGate(
     onGrantAccess: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    usesAllFilesAccess: Boolean = StorageAccess.requiresAllFilesAccess(),
+    isPermanentlyDenied: Boolean = false
 ) {
+    val actionLabel = if (!usesAllFilesAccess && isPermanentlyDenied) {
+        "Open settings"
+    } else {
+        "Grant access"
+    }
+    val helperHint = when {
+        usesAllFilesAccess ->
+            "Android opens Settings. Turn on “Allow access to manage all files”, then return here."
+        isPermanentlyDenied ->
+            "Storage permission was denied. Open App Settings, allow Storage permission, then return here."
+        else ->
+            "Tap Grant access and choose Allow when Android asks for storage permission."
+    }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -63,6 +80,7 @@ fun StorageAccessGate(
             modifier = Modifier
                 .align(Alignment.Center)
                 .fillMaxWidth()
+                .systemBarsPadding()
                 .padding(horizontal = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -119,7 +137,7 @@ fun StorageAccessGate(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Grant access",
+                    text = actionLabel,
                     color = Color.White,
                     fontSize = 14.5.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -130,7 +148,7 @@ fun StorageAccessGate(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "Android opens Settings. Turn on “Allow access to manage all files”, then return here.",
+                text = helperHint,
                 color = PlayMeColors.TextTertiary,
                 fontSize = 11.sp,
                 lineHeight = 17.sp,

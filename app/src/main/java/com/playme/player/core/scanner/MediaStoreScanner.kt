@@ -3,7 +3,6 @@ package com.playme.player.core.scanner
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import com.playme.player.core.model.BadgeVariant
 import com.playme.player.core.model.VideoBadge
@@ -28,7 +27,8 @@ class MediaStoreScanner(private val context: Context) {
             MediaStore.Video.Media.SIZE,
             MediaStore.Video.Media.DATE_MODIFIED,
             MediaStore.Video.Media.WIDTH,
-            MediaStore.Video.Media.HEIGHT
+            MediaStore.Video.Media.HEIGHT,
+            MediaStore.Video.Media.RESOLUTION
         )
 
         val sortOrder = "${MediaStore.Video.Media.DATE_MODIFIED} DESC"
@@ -47,10 +47,10 @@ class MediaStoreScanner(private val context: Context) {
                 val durCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
                 val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
                 val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
-                // WIDTH/HEIGHT only exist from API 29; getColumnIndexOrThrow would
-                // crash the whole scan on older devices.
+                // Optional on some OEM MediaProviders / API 28 rows where WIDTH/HEIGHT are 0.
                 val widthCol = cursor.getColumnIndex(MediaStore.Video.Media.WIDTH)
                 val heightCol = cursor.getColumnIndex(MediaStore.Video.Media.HEIGHT)
+                val resCol = cursor.getColumnIndex(MediaStore.Video.Media.RESOLUTION)
 
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idCol)
@@ -59,11 +59,19 @@ class MediaStoreScanner(private val context: Context) {
                     val durationMs = cursor.getLong(durCol).coerceAtLeast(0L)
                     val sizeBytes = cursor.getLong(sizeCol).coerceAtLeast(0L)
                     val dateModifiedMs = cursor.getLong(dateCol) * 1000L
-                    val width = if (widthCol != -1) cursor.getInt(widthCol) else 0
-                    val height = if (heightCol != -1) cursor.getInt(heightCol) else 0
+                    var width = if (widthCol != -1) cursor.getInt(widthCol) else 0
+                    var height = if (heightCol != -1) cursor.getInt(heightCol) else 0
+                    if ((width <= 0 || height <= 0) && resCol != -1) {
+                        val parsed = parseResolutionString(cursor.getString(resCol))
+                        if (parsed != null) {
+                            width = parsed.first
+                            height = parsed.second
+                        }
+                    }
 
                     val contentUri = ContentUris.withAppendedId(collection, id)
-                    val format = path.substringAfterLast('.', "MP4").uppercase()
+                    val fileName = path.substringAfterLast('/').ifEmpty { title }
+                    val format = fileName.substringAfterLast('.', "").ifBlank { "MP4" }.uppercase()
                     val resolution = determineResolution(width, height)
                     val parent = if (path.isNotEmpty()) File(path).parentFile?.name ?: "Internal" else "Internal"
 
@@ -106,6 +114,15 @@ class MediaStoreScanner(private val context: Context) {
         videos
     }
 
+    private fun parseResolutionString(raw: String?): Pair<Int, Int>? {
+        if (raw.isNullOrBlank()) return null
+        val parts = raw.trim().split('x', 'X', '×')
+        if (parts.size != 2) return null
+        val w = parts[0].trim().toIntOrNull() ?: return null
+        val h = parts[1].trim().toIntOrNull() ?: return null
+        return if (w > 0 && h > 0) w to h else null
+    }
+
     private fun determineResolution(width: Int, height: Int): String {
         val maxDim = maxOf(width, height)
         val minDim = minOf(width, height)
@@ -119,7 +136,6 @@ class MediaStoreScanner(private val context: Context) {
         }
     }
 
-    private fun cleanTitle(raw: String): String {
-        return raw.substringBeforeLast('.')
-    }
+    private fun cleanTitle(raw: String): String =
+        raw.substringBeforeLast('.').ifBlank { raw }
 }

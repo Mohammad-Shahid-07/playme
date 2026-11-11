@@ -41,7 +41,7 @@ fun LibraryFoldersPage(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(items = folders, key = { it.id }, contentType = { "folder_grid" }) { folder ->
+            items(items = folders, key = { it.path }, contentType = { "folder_grid" }) { folder ->
                 FolderCardItem(
                     folder = folder,
                     viewMode = ViewMode.GRID,
@@ -55,7 +55,7 @@ fun LibraryFoldersPage(
             contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(items = folders, key = { it.id }, contentType = { "folder_list" }) { folder ->
+            items(items = folders, key = { it.path }, contentType = { "folder_list" }) { folder ->
                 FolderCardItem(
                     folder = folder,
                     viewMode = ViewMode.LIST,

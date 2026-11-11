@@ -3,12 +3,14 @@ package com.playme.player.core.scanner
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.SystemClock
 import android.util.LruCache
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
@@ -53,12 +55,41 @@ object ThumbnailManager {
         }.asCoroutineDispatcher()
 
     /**
-     * Files no decoder can handle fail on every attempt. Remembering that stops
-     * the list from retrying a multi-second decode each time a card returns to
-     * the viewport.
+     * Back off failed decodes instead of poisoning them permanently: fast
+     * scrolling stays smooth, while files that were still copying or blocked
+     * before a permission grant can recover after a short cooldown.
      */
-    private val failedIds: MutableSet<String> =
-        Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    private data class FailureRecord(val attempts: Int, val failedAtMs: Long)
+
+    private const val SHORT_RETRY_COOLDOWN_MS = 30_000L
+    private const val LONG_RETRY_COOLDOWN_MS = 5 * 60_000L
+    private const val MAX_FAST_ATTEMPTS = 3
+    private const val MAX_FAILURE_ENTRIES = 1_000
+
+    private val failures = ConcurrentHashMap<String, FailureRecord>()
+    private val keyLocks = Array(64) { Mutex() }
+
+    private fun lockFor(key: String): Mutex = keyLocks[key.hashCode() and 0x3F]
+
+    private fun isInFailureCooldown(videoId: String): Boolean {
+        val record = failures[videoId] ?: return false
+        val cooldown = if (record.attempts >= MAX_FAST_ATTEMPTS) {
+            LONG_RETRY_COOLDOWN_MS
+        } else {
+            SHORT_RETRY_COOLDOWN_MS
+        }
+        return SystemClock.elapsedRealtime() - record.failedAtMs < cooldown
+    }
+
+    private fun recordFailure(videoId: String) {
+        if (failures.size > MAX_FAILURE_ENTRIES) failures.clear()
+        val now = SystemClock.elapsedRealtime()
+        val prev = failures[videoId]
+        failures[videoId] = FailureRecord(
+            attempts = (prev?.attempts ?: 0) + 1,
+            failedAtMs = now
+        )
+    }
 
     fun getFromMemory(id: String): Bitmap? = memoryCache.get(cacheKey(id))
 
@@ -73,26 +104,32 @@ object ThumbnailManager {
     ): Bitmap? {
         val key = cacheKey(videoId)
         memoryCache.get(key)?.let { return it }
-        if (failedIds.contains(videoId)) return null
+        if (isInFailureCooldown(videoId)) return null
 
-        val bitmap = withContext(decodeDispatcher) {
-            ThumbnailDecoder.decode(
-                context = context,
-                videoId = videoId,
-                uri = uri,
-                filePath = filePath,
-                durationMs = durationMs,
-                targetWidth = targetWidth,
-                targetHeight = targetHeight,
-                diskCacheFile = snapshotFile(context, videoId)
-            )
-        }
+        return lockFor(key).withLock {
+            memoryCache.get(key)?.let { return@withLock it }
+            if (isInFailureCooldown(videoId)) return@withLock null
 
-        if (bitmap == null) {
-            failedIds.add(videoId)
-        } else {
-            memoryCache.put(key, bitmap)
+            val bitmap = withContext(decodeDispatcher) {
+                ThumbnailDecoder.decode(
+                    context = context,
+                    videoId = videoId,
+                    uri = uri,
+                    filePath = filePath,
+                    durationMs = durationMs,
+                    targetWidth = targetWidth,
+                    targetHeight = targetHeight,
+                    diskCacheFile = snapshotFile(context, videoId)
+                )
+            }
+
+            if (bitmap == null) {
+                recordFailure(videoId)
+            } else {
+                failures.remove(videoId)
+                memoryCache.put(key, bitmap)
+            }
+            bitmap
         }
-        return bitmap
     }
 }

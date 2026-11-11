@@ -43,7 +43,7 @@ class DeepStorageScanner(private val metadataStore: MediaMetadataStore) {
 
         @Suppress("DEPRECATION")
         val root = Environment.getExternalStorageDirectory()
-        if (root != null && root.exists()) pending.addLast(root to 0)
+        if (root != null && root.exists() && root.canRead()) pending.addLast(root to 0)
 
         while (pending.isNotEmpty()) {
             coroutineContext.ensureActive()
@@ -56,6 +56,7 @@ class DeepStorageScanner(private val metadataStore: MediaMetadataStore) {
 
             val children = runCatching { directory.listFiles() }.getOrNull() ?: continue
             for (child in children) {
+                coroutineContext.ensureActive()
                 if (child.isDirectory) {
                     if (!shouldSkip(child)) pending.addLast(child to depth + 1)
                 } else {
@@ -110,7 +111,7 @@ class DeepStorageScanner(private val metadataStore: MediaMetadataStore) {
 
         return VideoItem(
             id = path.hashCode().toString(),
-            title = file.nameWithoutExtension,
+            title = file.nameWithoutExtension.ifBlank { file.name },
             uri = uri,
             path = path,
             durationMs = durationMs,

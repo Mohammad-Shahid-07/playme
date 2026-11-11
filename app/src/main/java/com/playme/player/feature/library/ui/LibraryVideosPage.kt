@@ -49,7 +49,11 @@ fun LibraryVideosPage(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(items = videos, key = { it.id }, contentType = { "video_grid" }) { video ->
+                items(
+                    items = videos,
+                    key = { "${it.id}:${it.path}" },
+                    contentType = { "video_grid" }
+                ) { video ->
                     VideoCardItem(
                         video = video,
                         viewMode = ViewMode.GRID,
@@ -69,7 +73,11 @@ fun LibraryVideosPage(
                 contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(items = videos, key = { it.id }, contentType = { "video_list" }) { video ->
+                items(
+                    items = videos,
+                    key = { "${it.id}:${it.path}" },
+                    contentType = { "video_list" }
+                ) { video ->
                     VideoCardItem(
                         video = video,
                         viewMode = ViewMode.LIST,

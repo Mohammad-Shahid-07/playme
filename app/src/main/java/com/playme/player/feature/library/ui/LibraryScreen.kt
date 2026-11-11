@@ -1,5 +1,6 @@
 package com.playme.player.feature.library.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,13 +47,36 @@ fun LibraryScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsState()
-    val pagerState = rememberPagerState(initialPage = 0) { PAGE_COUNT }
+    val pagerState = rememberPagerState(initialPage = state.activeSubTab.ordinal) { PAGE_COUNT }
     val scope = rememberCoroutineScope()
     val currentTab = VideoSubTab.entries[pagerState.currentPage.coerceIn(0, PAGE_COUNT - 1)]
+    val selectedSeries = state.selectedSeries
+    val selectedFolder = state.selectedFolder
 
     // Files copied while the app was in the background (or into a .nomedia
     // folder) are picked up as soon as the library is visible again.
     LibraryResumeRefresh { viewModel.onAction(LibraryAction.RefreshVideos) }
+
+    LaunchedEffect(pagerState.currentPage) {
+        if (selectedFolder == null && state.activeSubTab != currentTab) {
+            viewModel.onAction(LibraryAction.SetSubTab(currentTab))
+        }
+    }
+
+    LaunchedEffect(selectedFolder) {
+        if (selectedFolder != null && pagerState.currentPage != VideoSubTab.VIDEOS.ordinal) {
+            pagerState.scrollToPage(VideoSubTab.VIDEOS.ordinal)
+        }
+    }
+
+    BackHandler(enabled = selectedSeries != null || selectedFolder != null) {
+        if (selectedSeries != null) {
+            viewModel.onAction(LibraryAction.SelectSeries(null))
+        } else if (selectedFolder != null) {
+            viewModel.onAction(LibraryAction.SelectFolder(null))
+            scope.launch { pagerState.animateScrollToPage(VideoSubTab.FOLDERS.ordinal) }
+        }
+    }
 
     Column(
         modifier = modifier
@@ -68,7 +93,6 @@ fun LibraryScreen(
 
         LibraryScanIndicator(isScanning = state.isScanning)
 
-        val selectedSeries = state.selectedSeries
         if (selectedSeries != null) {
             SeriesDetailView(
                 series = selectedSeries,
@@ -80,14 +104,17 @@ fun LibraryScreen(
             return@Column
         }
 
-        state.selectedFolder?.let { folder ->
+        selectedFolder?.let { folder ->
             FolderBackHeader(
                 name = folder.name,
-                onClick = { viewModel.onAction(LibraryAction.SelectFolder(null)) }
+                onClick = {
+                    viewModel.onAction(LibraryAction.SelectFolder(null))
+                    scope.launch { pagerState.animateScrollToPage(VideoSubTab.FOLDERS.ordinal) }
+                }
             )
         }
 
-        if (state.searchQuery.isEmpty() && state.selectedFolder == null) {
+        if (state.searchQuery.isEmpty() && selectedFolder == null) {
             ContinueWatchingRow(
                 items = state.continueWatching,
                 onItemClick = { item ->
@@ -99,10 +126,13 @@ fun LibraryScreen(
         }
 
         VideoSubNavBar(
-            activeTab = currentTab,
+            activeTab = if (selectedFolder != null) VideoSubTab.VIDEOS else currentTab,
             sortOption = state.sortOption,
             viewMode = state.viewMode,
             onTabChange = { tab ->
+                if (selectedFolder != null) {
+                    viewModel.onAction(LibraryAction.SelectFolder(null))
+                }
                 scope.launch { pagerState.animateScrollToPage(tab.ordinal) }
             },
             onSortChange = { viewModel.onAction(LibraryAction.SetSortOption(it)) },

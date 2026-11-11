@@ -46,6 +46,11 @@ class VideoRepository(private val context: Context) {
     private val deepStorageScanner = DeepStorageScanner(metadataStore)
 
     fun observeLibrary(): Flow<LibrarySnapshot> = channelFlow {
+        if (!StorageAccess.hasLibraryAccess(context)) {
+            send(snapshotOf(emptyList(), LibraryPhase.COMPLETE))
+            return@channelFlow
+        }
+
         val cached = snapshotStore.read().filterExisting()
         if (cached.isNotEmpty()) send(snapshotOf(cached, LibraryPhase.CACHE))
 
@@ -53,7 +58,7 @@ class VideoRepository(private val context: Context) {
         var merged = merge(mediaStoreVideos, cached)
         send(snapshotOf(merged, LibraryPhase.MEDIA_STORE))
 
-        if (StorageAccess.hasAllFilesAccess()) {
+        if (StorageAccess.hasDeepScanAccess(context)) {
             metadataStore.load()
             val indexed = mediaStoreVideos.mapNotNull { it.path.ifBlank { null } }.toHashSet()
             val discovered = ArrayList<VideoItem>()
@@ -86,16 +91,26 @@ class VideoRepository(private val context: Context) {
     @OptIn(FlowPreview::class)
     fun observeMediaChanges(): Flow<Unit> = callbackFlow {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) {
+                trySend(Unit)
+            }
+
             override fun onChange(selfChange: Boolean, uri: Uri?) {
                 trySend(Unit)
             }
         }
-        context.contentResolver.registerContentObserver(
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-            true,
-            observer
-        )
-        awaitClose { context.contentResolver.unregisterContentObserver(observer) }
+        val registered = runCatching {
+            context.contentResolver.registerContentObserver(
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                true,
+                observer
+            )
+        }.isSuccess
+        awaitClose {
+            if (registered) {
+                runCatching { context.contentResolver.unregisterContentObserver(observer) }
+            }
+        }
     }.debounce(MEDIA_CHANGE_DEBOUNCE_MS)
 
     fun groupIntoFolders(videos: List<VideoItem>): List<FolderItem> {

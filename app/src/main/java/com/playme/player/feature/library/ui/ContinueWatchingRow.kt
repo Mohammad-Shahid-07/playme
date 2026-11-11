@@ -112,7 +112,7 @@ fun ContinueWatchingRow(
         ) {
             items(
                 items = items,
-                key = { it.id }
+                key = { "${it.id}:${it.path}" }
             ) { item ->
                 ContinueWatchingCard(item = item, onClick = { onItemClick(item) })
             }
@@ -130,9 +130,12 @@ private fun ContinueWatchingCard(
         mutableStateOf<Bitmap?>(ThumbnailManager.getFromMemory(item.id))
     }
 
-    LaunchedEffect(item.id) {
+    LaunchedEffect(item.id, item.thumbnailUrl, item.videoUri) {
         if (bitmap == null) {
-            val uri = try { Uri.parse(item.thumbnailUrl) } catch (_: Exception) { Uri.EMPTY }
+            val uri = item.thumbnailUrl
+                ?.takeIf { it.isNotBlank() }
+                ?.let { raw -> runCatching { Uri.parse(raw) }.getOrNull() }
+                ?: item.videoUri
             bitmap = ThumbnailManager.loadThumbnail(
                 context = context,
                 videoId = item.id,

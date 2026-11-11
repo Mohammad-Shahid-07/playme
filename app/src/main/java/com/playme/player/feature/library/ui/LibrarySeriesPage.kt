@@ -50,7 +50,11 @@ fun LibrarySeriesPage(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(items = series, key = { it.id }, contentType = { "series_grid" }) { item ->
+                items(
+                    items = series,
+                    key = { "${it.id}:${it.title}:${it.year ?: ""}" },
+                    contentType = { "series_grid" }
+                ) { item ->
                     SeriesCardItem(
                         series = item,
                         viewMode = ViewMode.GRID,
@@ -70,7 +74,11 @@ fun LibrarySeriesPage(
                 contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(items = series, key = { it.id }, contentType = { "series_list" }) { item ->
+                items(
+                    items = series,
+                    key = { "${it.id}:${it.title}:${it.year ?: ""}" },
+                    contentType = { "series_list" }
+                ) { item ->
                     SeriesCardItem(
                         series = item,
                         viewMode = ViewMode.LIST,

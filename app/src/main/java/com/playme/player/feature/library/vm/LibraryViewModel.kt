@@ -5,6 +5,8 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.playme.player.core.history.WatchProgressStore
+import com.playme.player.core.model.ContinueWatchingItem
+import com.playme.player.core.model.FolderItem
 import com.playme.player.core.model.LibraryPhase
 import com.playme.player.core.model.LibrarySnapshot
 import com.playme.player.core.model.SortOption
@@ -23,14 +25,20 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = VideoRepository(application.applicationContext)
     private val progressStore = WatchProgressStore(application.applicationContext)
+    private val progressMutex = Mutex()
+    private val progressGeneration = AtomicInteger(0)
 
     private val _state = MutableStateFlow(LibraryState(isLoading = true))
     val state: StateFlow<LibraryState> = _state.asStateFlow()
@@ -45,23 +53,69 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
         refreshTrigger
             .flatMapLatest { repository.observeLibrary() }
-            .onEach { snapshot ->
-                val current = _state.value
-                val scanning = snapshot.phase != LibraryPhase.COMPLETE
-                // A deep scan emits every 800ms. Re-publishing an identical
-                // list forces the whole library to recompose mid-scroll, so
-                // only the scanning flag is refreshed in that case.
-                if (current.allVideos == snapshot.videos && current.isScanning == scanning) {
-                    return@onEach
-                }
-                if (current.allVideos == snapshot.videos) {
-                    _state.value = current.copy(isScanning = scanning)
-                    return@onEach
-                }
-                // Folder grouping and the watch-history read are off-main work.
-                _state.value = withContext(Dispatchers.IO) { reduce(current, snapshot) }
-            }
+            .onEach { applySnapshot(it) }
             .launchIn(viewModelScope)
+    }
+
+    private suspend fun applySnapshot(snapshot: LibrarySnapshot) {
+        val current = _state.value
+        val scanning = snapshot.phase != LibraryPhase.COMPLETE
+        val structureChanged = current.isLoading ||
+            current.allVideos != snapshot.videos ||
+            current.series != snapshot.series
+        val refreshProgress = snapshot.phase == LibraryPhase.CACHE ||
+            snapshot.phase == LibraryPhase.COMPLETE
+
+        // A deep scan emits every 800ms. Skip disk reads and full reduction
+        // mid-scan when videos and series are unchanged.
+        if (!structureChanged && !refreshProgress) {
+            if (current.isScanning != scanning) {
+                _state.update { it.copy(isScanning = scanning) }
+            }
+            return
+        }
+
+        if (!structureChanged) {
+            val continueWatching = withContext(Dispatchers.IO) {
+                readContinueWatchingLocked(snapshot.videos)
+            }
+            _state.update { latest ->
+                if (latest.isScanning == scanning && latest.continueWatching == continueWatching) {
+                    latest
+                } else {
+                    latest.copy(isScanning = scanning, continueWatching = continueWatching)
+                }
+            }
+            return
+        }
+
+        val (folders, continueWatching) = withContext(Dispatchers.IO) {
+            repository.groupIntoFolders(snapshot.videos) to readContinueWatchingLocked(snapshot.videos)
+        }
+        _state.update { latest -> reduce(latest, snapshot, folders, continueWatching) }
+    }
+
+    private suspend fun readContinueWatchingLocked(
+        videos: List<VideoItem>
+    ): List<ContinueWatchingItem> {
+        val gen = progressGeneration.get()
+        val items = progressMutex.withLock { progressStore.toContinueWatching(videos) }
+        return if (progressGeneration.get() == gen) items else emptyList()
+    }
+
+    private fun refreshContinueWatching() {
+        viewModelScope.launch {
+            val videos = _state.value.allVideos
+            if (videos.isEmpty()) return@launch
+            val continueWatching = withContext(Dispatchers.IO) { readContinueWatchingLocked(videos) }
+            _state.update { latest ->
+                if (latest.allVideos == videos && latest.continueWatching != continueWatching) {
+                    latest.copy(continueWatching = continueWatching)
+                } else {
+                    latest
+                }
+            }
+        }
     }
 
     /**
@@ -77,7 +131,10 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
 
     fun onAction(action: LibraryAction) {
         when (action) {
-            is LibraryAction.RefreshVideos -> requestRefresh()
+            is LibraryAction.RefreshVideos -> {
+                refreshContinueWatching()
+                requestRefresh()
+            }
             is LibraryAction.SetSubTab -> _state.update { it.copy(activeSubTab = action.tab) }
             is LibraryAction.SetSortOption -> _state.update { current ->
                 current.copy(
@@ -111,15 +168,22 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 it.copy(selectedSeries = action.series, selectedFolder = null)
             }
             is LibraryAction.ClearWatchHistory -> {
-                progressStore.clear()
+                progressGeneration.incrementAndGet()
                 _state.update { it.copy(continueWatching = emptyList()) }
+                viewModelScope.launch(Dispatchers.IO) {
+                    progressMutex.withLock { progressStore.clear() }
+                }
             }
             is LibraryAction.PlayVideo -> Unit
         }
     }
 
-    private fun reduce(current: LibraryState, snapshot: LibrarySnapshot): LibraryState {
-        val folders = repository.groupIntoFolders(snapshot.videos)
+    private fun reduce(
+        current: LibraryState,
+        snapshot: LibrarySnapshot,
+        folders: List<FolderItem>,
+        continueWatching: List<ContinueWatchingItem>
+    ): LibraryState {
         val selectedFolder = current.selectedFolder?.let { selected ->
             folders.firstOrNull { it.path == selected.path }
         }
@@ -143,7 +207,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 repository.searchSeries(snapshot.series, current.searchQuery),
                 current.sortOption
             ),
-            continueWatching = progressStore.toContinueWatching(snapshot.videos),
+            continueWatching = continueWatching,
             selectedFolder = selectedFolder,
             selectedSeries = selectedSeries
         )

@@ -3,8 +3,10 @@ package com.playme.player.core.scanner
 import android.content.Context
 import android.graphics.Bitmap
 import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.ReturnCode
 import java.io.File
 import java.util.Locale
+import java.util.UUID
 
 /**
  * On-demand frames for the seek bar preview.
@@ -25,6 +27,7 @@ object SeekPreviewFrames {
     private const val TILE_WIDTH = 160
     private const val TILE_HEIGHT = 90
     private const val CACHE_VERSION = "f1"
+    private val targetLocks = Array(64) { Any() }
 
     fun bucketFor(durationMs: Long, positionMs: Long): Int {
         if (durationMs <= 0L) return 0
@@ -34,6 +37,9 @@ object SeekPreviewFrames {
 
     private fun frameFile(context: Context, videoId: String, bucket: Int): File =
         File(context.cacheDir, "seek_${CACHE_VERSION}_${videoId}_$bucket.jpg")
+
+    private fun lockFor(file: File): Any =
+        targetLocks[file.absolutePath.hashCode() and 0x3F]
 
     /**
      * Blocking — call from a background dispatcher. Returns the frame for the
@@ -51,27 +57,54 @@ object SeekPreviewFrames {
         val bucket = bucketFor(durationMs, positionMs)
         val file = frameFile(context, videoId, bucket)
 
-        if (!file.exists() || file.length() == 0L) {
-            // Sample the middle of the bucket so the preview matches roughly
-            // what the user sees after releasing the thumb.
-            val seekMs = (durationMs.toDouble() / BUCKET_COUNT * (bucket + 0.5)).toLong()
-            val arguments = arrayOf(
-                "-ss", String.format(Locale.US, "%.3f", seekMs / 1000.0),
-                "-i", filePath,
-                "-frames:v", "1",
-                "-vf", scaleFilter(),
-                "-q:v", "5",
-                "-y", file.absolutePath
-            )
-            val ok = runCatching {
-                FFmpegKit.executeWithArguments(arguments)
-            }.isSuccess
-            if (!ok || !file.exists() || file.length() == 0L) return null
+        return synchronized(lockFor(file)) {
+            if (!file.exists() || file.length() == 0L) {
+                if (!generateFrame(context, file, filePath, durationMs, bucket)) {
+                    return@synchronized null
+                }
+            }
+            runCatching {
+                android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+            }.getOrNull()
         }
+    }
 
-        return runCatching {
-            android.graphics.BitmapFactory.decodeFile(file.absolutePath)
-        }.getOrNull()
+    private fun generateFrame(
+        context: Context,
+        targetFile: File,
+        filePath: String,
+        durationMs: Long,
+        bucket: Int
+    ): Boolean {
+        // Sample the middle of the bucket so the preview matches roughly
+        // what the user sees after releasing the thumb.
+        val seekMs = (durationMs.toDouble() / BUCKET_COUNT * (bucket + 0.5)).toLong()
+        val tempFile = File(context.cacheDir, "${targetFile.name}.${UUID.randomUUID()}.tmp.jpg")
+        val arguments = arrayOf(
+            "-ss", String.format(Locale.US, "%.3f", seekMs / 1000.0),
+            "-i", filePath,
+            "-frames:v", "1",
+            "-vf", scaleFilter(),
+            "-q:v", "5",
+            "-y", tempFile.absolutePath
+        )
+
+        return try {
+            val session = FFmpegKit.executeWithArguments(arguments)
+            val ok = ReturnCode.isSuccess(session.returnCode) &&
+                tempFile.exists() &&
+                tempFile.length() > 0L
+            if (!ok) return false
+
+            if (!tempFile.renameTo(targetFile)) {
+                tempFile.copyTo(targetFile, overwrite = true)
+            }
+            targetFile.exists() && targetFile.length() > 0L
+        } catch (_: Exception) {
+            false
+        } finally {
+            runCatching { if (tempFile.exists()) tempFile.delete() }
+        }
     }
 
     /** Letterboxes rather than stretching, so portrait clips stay readable. */

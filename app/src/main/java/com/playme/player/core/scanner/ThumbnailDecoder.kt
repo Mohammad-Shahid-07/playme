@@ -17,7 +17,7 @@ import kotlin.math.roundToInt
  * system in microseconds and only genuinely undecodable ones reach FFmpeg:
  *
  *  1. disk cache
- *  2. MediaStore thumbnail (hardware, API 29+)
+ *  2. MediaStore thumbnail (API 29+ loadThumbnail, API 26–28 Video.Thumbnails)
  *  3. `MediaMetadataRetriever` at 10% (also covers `.nomedia` folders)
  *  4. FFmpeg software decode
  *
@@ -39,13 +39,15 @@ internal object ThumbnailDecoder {
 
         val systemThumbnail = systemThumbnail(
             context, videoId, uri, targetWidth, targetHeight
-        )
-        // A system thumbnail can legitimately be a black fade-in frame.
-        val candidate = if (systemThumbnail != null && isMostlyBlack(systemThumbnail)) {
-            retrieverFrame(filePath) ?: systemThumbnail
-        } else {
-            systemThumbnail
-        }
+        )?.let(::toSoftwareBitmap)
+
+        // System thumbnails are absent for `.nomedia` files and some API 28 codecs,
+        // or can be a black fade-in frame. Try MediaMetadataRetriever before FFmpeg.
+        val candidate = when {
+            systemThumbnail == null -> retrieverFrame(context, uri, filePath)
+            isMostlyBlack(systemThumbnail) -> retrieverFrame(context, uri, filePath) ?: systemThumbnail
+            else -> systemThumbnail
+        }?.let(::toSoftwareBitmap)
 
         candidate?.let { return writeDiskCache(it, diskCacheFile, targetWidth, targetHeight) }
 
@@ -95,15 +97,27 @@ internal object ThumbnailDecoder {
     }
 
     /** Grabs a representative frame: 10% in for anything longer than 10s. */
-    private fun retrieverFrame(filePath: String): Bitmap? {
-        if (filePath.isEmpty()) return null
+    private fun retrieverFrame(context: Context, uri: Uri, filePath: String): Bitmap? {
+        if (filePath.isEmpty() && uri.scheme != "content") return null
         val retriever = MediaMetadataRetriever()
         return try {
-            retriever.setDataSource(filePath)
+            if (filePath.isNotEmpty()) {
+                try {
+                    retriever.setDataSource(filePath)
+                } catch (e: Exception) {
+                    if (uri.scheme == "content") retriever.setDataSource(context, uri) else throw e
+                }
+            } else {
+                retriever.setDataSource(context, uri)
+            }
             val durationMs = retriever
                 .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                 ?.toLongOrNull() ?: 0L
-            val atUs = if (durationMs > 10_000L) durationMs * 1_000L / 10L else 1_000_000L
+            val atUs = when {
+                durationMs > 10_000L -> durationMs * 1_000L / 10L
+                durationMs > 0L -> (durationMs * 500L).coerceAtMost(1_000_000L)
+                else -> 1_000_000L
+            }
             retriever.getFrameAtTime(atUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                 ?: retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
         } catch (_: Exception) {
@@ -111,6 +125,15 @@ internal object ThumbnailDecoder {
         } finally {
             runCatching { retriever.release() }
         }
+    }
+
+    private fun toSoftwareBitmap(bitmap: Bitmap): Bitmap {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            bitmap.config == Bitmap.Config.HARDWARE
+        ) {
+            return bitmap.copy(Bitmap.Config.ARGB_8888, false) ?: bitmap
+        }
+        return bitmap
     }
 
     /**
@@ -150,6 +173,11 @@ internal object ThumbnailDecoder {
     /** Cheap luminance sampling — 144 pixels is enough to spot a black frame. */
     private fun isMostlyBlack(bitmap: Bitmap): Boolean {
         if (bitmap.width == 0 || bitmap.height == 0) return true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            bitmap.config == Bitmap.Config.HARDWARE
+        ) {
+            return false
+        }
         val stepX = (bitmap.width / 12).coerceAtLeast(1)
         val stepY = (bitmap.height / 12).coerceAtLeast(1)
         var dark = 0

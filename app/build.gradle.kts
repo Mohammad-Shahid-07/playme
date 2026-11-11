@@ -22,10 +22,39 @@ android {
         }
     }
 
+    /**
+     * libVLC and FFmpeg each ship native libraries for every ABI, which makes a
+     * universal APK ~115MB. Splitting per ABI means a phone downloads only its
+     * own architecture. x86/x86_64 are emulator-only and are dropped.
+     */
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
+    }
+
+    /**
+     * Release builds are signed with the local debug keystore so they can be
+     * installed for performance testing. A debug build runs Compose through
+     * JIT and is several times slower — never judge scroll smoothness from it.
+     */
+    signingConfigs {
+        create("localRelease") {
+            storeFile = File(System.getProperty("user.home"), ".android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("localRelease")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -85,6 +114,10 @@ dependencies {
 
     // LibVLC Universal Codec Engine (100% Format/Codec Fallback)
     implementation(libs.libvlc.all)
+
+    // FFmpeg software decoders — used only for thumbnail extraction when no
+    // platform decoder accepts the stream (e.g. 10-bit HEVC).
+    implementation(libs.ffmpeg.kit.min)
 
     // Room Database
     implementation(libs.androidx.room.runtime)

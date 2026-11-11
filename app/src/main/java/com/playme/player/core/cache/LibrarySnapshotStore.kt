@@ -21,9 +21,8 @@ import java.io.File
 class LibrarySnapshotStore(context: Context) {
 
     private val file = File(context.filesDir, FILE_NAME)
-    private val lock = Any()
 
-    fun read(): List<VideoItem> {
+    fun read(): List<VideoItem> = synchronized(lock) {
         if (!file.exists()) return emptyList()
         return try {
             val payload = JSONObject(file.readText())
@@ -43,6 +42,7 @@ class LibrarySnapshotStore(context: Context) {
     fun write(videos: List<VideoItem>) {
         if (videos.isEmpty()) return
         synchronized(lock) {
+            val temp = File(file.parentFile, "$FILE_NAME.tmp")
             try {
                 val array = JSONArray()
                 videos.forEach { array.put(it.toJson()) }
@@ -51,13 +51,13 @@ class LibrarySnapshotStore(context: Context) {
                     .put(KEY_SAVED_AT, System.currentTimeMillis())
                     .put(KEY_VIDEOS, array)
 
-                val temp = File(file.parentFile, "$FILE_NAME.tmp")
                 temp.writeText(payload.toString())
                 if (!temp.renameTo(file)) {
                     file.writeText(payload.toString())
                     temp.delete()
                 }
             } catch (_: Exception) {
+                runCatching { temp.delete() }
                 // A corrupt cache is never fatal: the next scan rebuilds it.
             }
         }
@@ -123,6 +123,7 @@ class LibrarySnapshotStore(context: Context) {
     }
 
     private companion object {
+        val lock = Any()
         const val FILE_NAME = "library_snapshot.json"
         const val VERSION = 1
         const val KEY_VERSION = "version"

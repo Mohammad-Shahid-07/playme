@@ -28,17 +28,22 @@ class WatchProgressStore(context: Context) {
 
     fun record(videoId: String, positionMs: Long, durationMs: Long) {
         if (videoId.isBlank() || positionMs <= 0L || durationMs <= 0L) return
-        val all = readAll().toMutableMap()
-        if (positionMs >= durationMs - FINISHED_MARGIN_MS) {
-            all.remove(videoId)
-        } else {
-            all[videoId] = Progress(videoId, positionMs, durationMs, System.currentTimeMillis())
+        synchronized(lock) {
+            val all = readAll().toMutableMap()
+            if (positionMs >= durationMs - FINISHED_MARGIN_MS) {
+                all.remove(videoId)
+            } else {
+                all[videoId] = Progress(videoId, positionMs, durationMs, System.currentTimeMillis())
+            }
+            writeAll(all)
         }
-        writeAll(all)
     }
 
     fun clear() {
-        runCatching { file.delete() }
+        synchronized(lock) {
+            runCatching { file.delete() }
+            runCatching { File(file.parentFile, "$FILE_NAME.tmp").delete() }
+        }
     }
 
     /** Most recent first, capped so the carousel stays light. */
@@ -66,7 +71,7 @@ class WatchProgressStore(context: Context) {
         }
     }
 
-    private fun readAll(): Map<String, Progress> {
+    private fun readAll(): Map<String, Progress> = synchronized(lock) {
         if (!file.exists()) return emptyMap()
         return try {
             val payload = JSONObject(file.readText())
@@ -87,29 +92,33 @@ class WatchProgressStore(context: Context) {
     }
 
     private fun writeAll(entries: Map<String, Progress>) {
-        try {
-            val payload = JSONObject()
-            entries.forEach { (key, progress) ->
-                payload.put(
-                    key,
-                    JSONObject()
-                        .put("positionMs", progress.positionMs)
-                        .put("durationMs", progress.durationMs)
-                        .put("updatedAt", progress.updatedAt)
-                )
-            }
+        synchronized(lock) {
             val temp = File(file.parentFile, "$FILE_NAME.tmp")
-            temp.writeText(payload.toString())
-            if (!temp.renameTo(file)) {
-                file.writeText(payload.toString())
-                temp.delete()
+            try {
+                val payload = JSONObject()
+                entries.forEach { (key, progress) ->
+                    payload.put(
+                        key,
+                        JSONObject()
+                            .put("positionMs", progress.positionMs)
+                            .put("durationMs", progress.durationMs)
+                            .put("updatedAt", progress.updatedAt)
+                    )
+                }
+                temp.writeText(payload.toString())
+                if (!temp.renameTo(file)) {
+                    file.writeText(payload.toString())
+                    temp.delete()
+                }
+            } catch (_: Exception) {
+                runCatching { temp.delete() }
+                // Losing progress is preferable to crashing the library.
             }
-        } catch (_: Exception) {
-            // Losing progress is preferable to crashing the library.
         }
     }
 
     private companion object {
+        val lock = Any()
         const val FILE_NAME = "watch_progress.json"
         const val FINISHED_MARGIN_MS = 5_000L
         const val MIN_FRACTION = 0.02f

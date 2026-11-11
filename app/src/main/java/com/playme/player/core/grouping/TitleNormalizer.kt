@@ -13,7 +13,7 @@ import java.util.Locale
 internal object TitleNormalizer {
 
     private val EXTENSION = Regex("\\.[A-Za-z0-9]{2,4}$")
-    private val RELEASE_GROUP = Regex("\\s*-\\s*[A-Za-z0-9@]{2,}$")
+    private val RELEASE_GROUP = Regex("\\s*-\\s*(?=[A-Za-z0-9@]*[A-Za-z@])[A-Za-z0-9@]{2,}$")
     /** Telegram/encoder handles such as `@AnimeChidori`. */
     private val AT_HANDLE = Regex("@[\\p{L}\\p{N}_.]+")
     private val BRACKETS = Regex("[\\[\\]{}()]")
@@ -21,6 +21,10 @@ internal object TitleNormalizer {
     private val NON_WORD = Regex("[^\\p{L}\\p{N}\\s]+")
     private val MULTISPACE = Regex("\\s+")
     private val YEAR = Regex("\\b(19\\d{2}|20\\d{2})\\b")
+    private val COMPOUND_TAG_REGEX = Regex(
+        "\\b(?:web[-.\\s]dl|blu[-.\\s]ray|hd[-.\\s]rip|web[-.\\s]rip|dvd[-.\\s]rip|bd[-.\\s]rip|br[-.\\s]rip)\\b",
+        RegexOption.IGNORE_CASE
+    )
 
     /** Compound tags must be collapsed before separators are turned into spaces. */
     private val COMPOUND_TAGS = listOf(
@@ -44,8 +48,9 @@ internal object TitleNormalizer {
         "480p", "540p", "576p", "720p", "1080p", "1440p", "2160p", "4k", "8k",
         "uhd", "fhd", "hdr", "hdr10", "hdr10plus", "dv", "dolby", "atmos", "truehd",
         "x264", "x265", "h264", "h265", "hevc", "avc", "xvid", "divx", "10bit", "8bit",
-        "aac", "ac3", "eac3", "dts", "ddp", "opus", "mp3", "flac",
-        "webdl", "webrip", "bluray", "brrip", "bdrip", "dvdrip", "hdtv", "pdtv",
+        "aac", "ac3", "eac3", "dts", "ddp", "opus", "mp3", "flac", "2ch", "6ch", "8ch",
+        "av1", "vp9",
+        "web", "webdl", "webrip", "bluray", "brrip", "bdrip", "dvdrip", "hdtv", "pdtv",
         "hdcam", "camrip", "hdrip", "remux", "proper", "repack", "extended", "uncut",
         "remastered", "dubbed", "subbed", "dual", "yts", "yify", "rarbg", "psa", "evo", "ntb",
         "tigole", "qxr", "fgt", "subsplease", "erai", "horriblesubs",
@@ -56,10 +61,14 @@ internal object TitleNormalizer {
         val lower = toComparableText(raw)
         val year = YEAR.find(lower)?.value?.toIntOrNull()
         val yearToken = year?.toString()
-        val tokens = lower.split(' ')
-            .filter { it.isNotEmpty() && it !in TECHNICAL_TOKENS && it != yearToken }
+        val tokens = filterTokens(lower, yearToken)
         return NormalizedText(text = lower, tokens = tokens, year = year)
     }
+
+    /** Strips technical release tags and the detected year token from comparable text. */
+    fun filterTokens(comparableText: String, yearToken: String?): List<String> =
+        comparableText.split(' ')
+            .filter { it.isNotEmpty() && it !in TECHNICAL_TOKENS && it != yearToken }
 
     /**
      * Lowercase, separator-free version of the filename. Episode markers are
@@ -88,6 +97,7 @@ internal object TitleNormalizer {
         text = EXTENSION.replace(text, "")
         text = RELEASE_GROUP.replace(text, "")
         text = AT_HANDLE.replace(text, " ")
+        text = COMPOUND_TAG_REGEX.replace(text, " ")
         text = BRACKETS.replace(text, " ")
         text = SEPARATORS.replace(text, " ")
         text = NON_WORD.replace(text, " ")

@@ -130,15 +130,21 @@ internal object EpisodeParser {
             }
         }
 
-        var core = normalized.tokens.filter { it !in markers }.joinToString(" ")
+        var core = resolveSeriesCore(normalized, markers, prefix != null)
         val trailing = trailingEpisode
         if (episode == null && trailing != null) {
             val coreTokens = core.split(' ').filter { it.isNotBlank() }
-            val looksLikeCameraPrefix = coreTokens.size == 1 && coreTokens.first().length <= 3
+            val stemTokens = if (coreTokens.lastOrNull() == trailingToken) {
+                coreTokens.dropLast(1)
+            } else {
+                coreTokens
+            }
+            val looksLikeCameraPrefix = stemTokens.isEmpty() ||
+                (stemTokens.size == 1 && stemTokens.first().length <= 3)
             if (!looksLikeCameraPrefix) {
                 episode = trailing
                 trailingToken?.let { markers += it }
-                core = normalized.tokens.filter { it !in markers }.joinToString(" ")
+                core = stemTokens.joinToString(" ")
             }
         }
 
@@ -154,6 +160,35 @@ internal object EpisodeParser {
             markerTokens = markers
         )
     }
+
+    /**
+     * When an explicit episode/season marker follows the show title (e.g.
+     * `VisionQuest.S01E02.Theseus`), tokens *after* the marker belong to the
+     * episode title and release tags, not the series name. Prefix-style names
+     * (`[01-13] Show`, `S01_ShowA_E01`) have nothing before the earliest marker
+     * and fall back to all non-marker tokens.
+     */
+    private fun resolveSeriesCore(
+        normalized: NormalizedText,
+        markers: Set<String>,
+        hadLeadingBracket: Boolean
+    ): String {
+        val fallback = normalized.tokens.filter { it !in markers }.joinToString(" ")
+        if (hadLeadingBracket || markers.isEmpty()) return fallback
+
+        val earliestStart = findEarliestMarkerStart(normalized.text) ?: return fallback
+        if (earliestStart <= 0) return fallback
+
+        val prefixTokens = TitleNormalizer
+            .filterTokens(normalized.text.substring(0, earliestStart), normalized.year?.toString())
+            .filter { it !in markers }
+        return if (prefixTokens.isNotEmpty()) prefixTokens.joinToString(" ") else fallback
+    }
+
+    private fun findEarliestMarkerStart(text: String): Int? =
+        (SEASON_EPISODE + EPISODE_ONLY + SEASON_WORD + SEASON_SHORT + PART_MARKERS + LECTURE)
+            .mapNotNull { it.find(text)?.range?.first }
+            .minOrNull()
 
     private fun parseLecture(work: String, markers: MutableSet<String>): Pair<Int, String>? {
         val match = LECTURE.find(work) ?: return null

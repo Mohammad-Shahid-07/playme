@@ -8,6 +8,8 @@ import android.provider.MediaStore
 import com.playme.player.core.model.BadgeVariant
 import com.playme.player.core.model.VideoBadge
 import com.playme.player.core.model.VideoItem
+import com.playme.player.core.util.formatBytes
+import com.playme.player.core.util.formatDuration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -45,6 +47,8 @@ class MediaStoreScanner(private val context: Context) {
                 val durCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
                 val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
                 val dateCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DATE_MODIFIED)
+                // WIDTH/HEIGHT only exist from API 29; getColumnIndexOrThrow would
+                // crash the whole scan on older devices.
                 val widthCol = cursor.getColumnIndex(MediaStore.Video.Media.WIDTH)
                 val heightCol = cursor.getColumnIndex(MediaStore.Video.Media.HEIGHT)
 
@@ -83,7 +87,7 @@ class MediaStoreScanner(private val context: Context) {
                             durationMs = durationMs,
                             durationFormatted = formatDuration(durationMs),
                             sizeBytes = sizeBytes,
-                            fileSizeFormatted = formatFileSize(sizeBytes),
+                            fileSizeFormatted = formatBytes(sizeBytes),
                             format = format,
                             resolution = resolution,
                             thumbnailUrl = contentUri.toString(),
@@ -117,27 +121,5 @@ class MediaStoreScanner(private val context: Context) {
 
     private fun cleanTitle(raw: String): String {
         return raw.substringBeforeLast('.')
-    }
-
-    private fun formatDuration(ms: Long): String {
-        val totalSec = ms / 1000L
-        val hours = totalSec / 3600L
-        val minutes = (totalSec % 3600L) / 60L
-        val seconds = totalSec % 60L
-        return if (hours > 0) {
-            "%d:%02d:%02d".format(hours, minutes, seconds)
-        } else {
-            "%02d:%02d".format(minutes, seconds)
-        }
-    }
-
-    private fun formatFileSize(bytes: Long): String {
-        if (bytes <= 0) return "0 B"
-        val mb = bytes / (1024.0 * 1024.0)
-        return if (mb >= 1000.0) {
-            "%.1f GB".format(mb / 1024.0)
-        } else {
-            "%.0f MB".format(mb)
-        }
     }
 }

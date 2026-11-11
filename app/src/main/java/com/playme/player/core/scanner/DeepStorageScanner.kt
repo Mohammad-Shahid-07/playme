@@ -1,122 +1,112 @@
 package com.playme.player.core.scanner
 
-import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Environment
+import com.playme.player.core.cache.MediaMetadataStore
 import com.playme.player.core.model.BadgeVariant
 import com.playme.player.core.model.VideoBadge
 import com.playme.player.core.model.VideoItem
+import com.playme.player.core.util.formatBytes
+import com.playme.player.core.util.formatDuration
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.File
+import kotlin.coroutines.coroutineContext
 
-class DeepStorageScanner(private val context: Context) {
+/**
+ * Recursive storage walk for videos the MediaStore index does not expose
+ * (Telegram, WhatsApp, `.nomedia` folders).
+ *
+ * Results stream through [onItem] so the library fills in progressively, and
+ * metadata is memoised by path+size+mtime so a second launch never pays the
+ * `MediaMetadataRetriever` cost again.
+ */
+class DeepStorageScanner(private val metadataStore: MediaMetadataStore) {
 
     private val videoExtensions = setOf(
-        "mp4", "mkv", "webm", "avi", "mov", "flv", "3gp", "m4v", "ts", "wmv"
+        "mp4", "mkv", "webm", "avi", "mov", "flv", "3gp", "m4v", "ts", "wmv", "mpg", "mpeg"
     )
 
     private val ignoredDirNames = setOf(
-        ".git", "node_modules", "cache", "thumbnails", ".thumbnails"
+        "cache", "thumbnails", "lost.dir", "miui", "backup", "backups", "tmp", "temp"
     )
 
-    suspend fun scanDeepVideos(existingPaths: Set<String>): List<VideoItem> = withContext(Dispatchers.IO) {
-        val discoveredVideos = mutableListOf<VideoItem>()
-        val rootsToScan = mutableListOf<File>()
-
-        // 1. Primary external storage root
-        val primaryStorage = Environment.getExternalStorageDirectory()
-        if (primaryStorage != null && primaryStorage.exists()) {
-            rootsToScan.add(primaryStorage)
-        }
-
-        // 2. Scan each root recursively
-        val visitedDirs = mutableSetOf<String>()
-        for (root in rootsToScan) {
-            scanDirectory(root, existingPaths, discoveredVideos, visitedDirs, depth = 0, maxDepth = 7)
-        }
-
-        discoveredVideos
-    }
-
-    private fun scanDirectory(
-        directory: File,
+    suspend fun scan(
         existingPaths: Set<String>,
-        results: MutableList<VideoItem>,
-        visitedDirs: MutableSet<String>,
-        depth: Int,
-        maxDepth: Int
-    ) {
-        if (depth > maxDepth || !directory.exists() || !directory.isDirectory) return
-        val canonical = try { directory.canonicalPath } catch (_: Exception) { directory.absolutePath }
-        if (!visitedDirs.add(canonical)) return
+        onItem: (VideoItem) -> Unit
+    ): List<VideoItem> = withContext(Dispatchers.IO) {
+        val results = ArrayList<VideoItem>()
+        val visited = HashSet<String>()
+        val pending = ArrayDeque<Pair<File, Int>>()
 
-        val files = directory.listFiles() ?: return
+        @Suppress("DEPRECATION")
+        val root = Environment.getExternalStorageDirectory()
+        if (root != null && root.exists()) pending.addLast(root to 0)
 
-        for (file in files) {
-            if (file.isDirectory) {
-                val dirName = file.name
-                // Skip non-media system caches, but specifically allow Android/media (Telegram/WhatsApp live here!)
-                if (dirName.startsWith(".") && dirName != ".nomedia") continue
-                if (ignoredDirNames.contains(dirName.lowercase())) continue
-                // Android/data is restricted on API 30+, but Android/media is accessible
-                if (dirName.equals("data", ignoreCase = true) && file.parentFile?.name.equals("Android", ignoreCase = true)) {
-                    continue
-                }
+        while (pending.isNotEmpty()) {
+            coroutineContext.ensureActive()
+            val (directory, depth) = pending.removeLast()
+            if (depth > MAX_DEPTH) continue
 
-                scanDirectory(file, existingPaths, results, visitedDirs, depth + 1, maxDepth)
-            } else if (file.isFile && file.length() > 500_000L) { // Min 500KB to ignore tiny cached clips
-                val ext = file.extension.lowercase()
-                if (videoExtensions.contains(ext)) {
-                    val filePath = file.absolutePath
-                    // Avoid duplicating files already found by MediaStore
-                    if (!existingPaths.contains(filePath)) {
-                        buildVideoItemFromFile(file)?.let { results.add(it) }
-                    }
+            val canonical = runCatching { directory.canonicalPath }
+                .getOrDefault(directory.absolutePath)
+            if (!visited.add(canonical)) continue
+
+            val children = runCatching { directory.listFiles() }.getOrNull() ?: continue
+            for (child in children) {
+                if (child.isDirectory) {
+                    if (!shouldSkip(child)) pending.addLast(child to depth + 1)
+                } else {
+                    val item = buildItem(child, existingPaths) ?: continue
+                    results += item
+                    onItem(item)
                 }
             }
         }
+        results
     }
 
-    private fun buildVideoItemFromFile(file: File): VideoItem? {
+    private fun shouldSkip(directory: File): Boolean {
+        val name = directory.name
+        if (name.startsWith(".")) return true
+        if (name.lowercase() in ignoredDirNames) return true
+        val parentIsAndroid = directory.parentFile?.name.equals("Android", ignoreCase = true)
+        return parentIsAndroid && (name.equals("data", true) || name.equals("obb", true))
+    }
+
+    private fun buildItem(file: File, existingPaths: Set<String>): VideoItem? {
+        if (file.length() < MIN_SIZE_BYTES) return null
+        val extension = file.extension.lowercase()
+        if (extension !in videoExtensions) return null
+
         val path = file.absolutePath
-        val sizeBytes = file.length()
-        val dateModified = file.lastModified()
-        val format = file.extension.uppercase()
-        val parent = file.parentFile?.name ?: "Storage"
+        if (path in existingPaths) return null
 
-        var durationMs = 0L
-        var resolution = "HD"
+        val size = file.length()
+        val modified = file.lastModified()
+        val key = MediaMetadataStore.keyFor(path, size, modified)
+        val cached = metadataStore.get(key)
 
-        // Extract metadata via MediaMetadataRetriever
-        try {
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(path)
-            val durString = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
-            durationMs = durString?.toLongOrNull() ?: 0L
-
-            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
-            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
-            if (width > 0 && height > 0) {
-                val maxDim = maxOf(width, height)
-                resolution = if (maxDim >= 3840) "4K" else if (maxDim >= 1920) "FHD" else if (maxDim >= 1280) "HD" else "SD"
-            }
-            retriever.release()
-        } catch (_: Exception) {
-            // Unreadable video or permission fallback
+        val durationMs: Long
+        val resolution: String
+        if (cached != null) {
+            durationMs = cached.durationMs
+            resolution = cached.resolution
+        } else {
+            val probed = probeMetadata(file)
+            durationMs = probed.first
+            resolution = probed.second
+            metadataStore.put(key, MediaMetadataStore.Entry(durationMs, resolution))
         }
 
-        val badges = mutableListOf<VideoBadge>()
-        val variant = when (resolution) {
-            "4K" -> BadgeVariant.GOLD
-            "FHD" -> BadgeVariant.GRAY
-            else -> BadgeVariant.BLUE
-        }
-        badges.add(VideoBadge(resolution, variant))
-        badges.add(VideoBadge(format, BadgeVariant.GRAY))
-
+        val format = extension.uppercase()
         val uri = Uri.fromFile(file)
+        val badges = buildList {
+            add(VideoBadge(resolution, resolutionVariant(resolution)))
+            add(VideoBadge(format, BadgeVariant.GRAY))
+        }
 
         return VideoItem(
             id = path.hashCode().toString(),
@@ -125,37 +115,63 @@ class DeepStorageScanner(private val context: Context) {
             path = path,
             durationMs = durationMs,
             durationFormatted = formatDuration(durationMs),
-            sizeBytes = sizeBytes,
-            fileSizeFormatted = formatFileSize(sizeBytes),
+            sizeBytes = size,
+            fileSizeFormatted = formatBytes(size),
             format = format,
             resolution = resolution,
             thumbnailUrl = uri.toString(),
-            dateModifiedMs = dateModified,
-            isNew = System.currentTimeMillis() - dateModified < 86_400_000L * 3,
+            dateModifiedMs = modified,
+            isNew = System.currentTimeMillis() - modified < NEW_WINDOW_MS,
             badges = badges,
-            parentFolder = parent
+            parentFolder = file.parentFile?.name ?: "Storage"
         )
     }
 
-    private fun formatDuration(ms: Long): String {
-        val totalSec = ms / 1000L
-        val hours = totalSec / 3600L
-        val minutes = (totalSec % 3600L) / 60L
-        val seconds = totalSec % 60L
-        return if (hours > 0) {
-            "%d:%02d:%02d".format(hours, minutes, seconds)
-        } else {
-            "%02d:%02d".format(minutes, seconds)
+    private fun probeMetadata(file: File): Pair<Long, String> {
+        var durationMs = 0L
+        var resolution = "HD"
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(file.absolutePath)
+            durationMs = retriever
+                .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull() ?: 0L
+            val width = retriever
+                .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
+                ?.toIntOrNull() ?: 0
+            val height = retriever
+                .extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
+                ?.toIntOrNull() ?: 0
+            resolution = resolutionOf(width, height)
+        } catch (_: Exception) {
+            // Unreadable container: keep the file with unknown metadata.
+        } finally {
+            runCatching { retriever.release() }
+        }
+        return durationMs to resolution
+    }
+
+    private fun resolutionOf(width: Int, height: Int): String {
+        val maxDim = maxOf(width, height)
+        return when {
+            maxDim >= 3840 -> "4K"
+            maxDim >= 2560 -> "2K"
+            maxDim >= 1920 -> "FHD"
+            maxDim >= 1280 -> "HD"
+            maxDim > 0 -> "SD"
+            else -> "HD"
         }
     }
 
-    private fun formatFileSize(bytes: Long): String {
-        if (bytes <= 0) return "0 B"
-        val mb = bytes / (1024.0 * 1024.0)
-        return if (mb >= 1000.0) {
-            "%.1f GB".format(mb / 1024.0)
-        } else {
-            "%.0f MB".format(mb)
-        }
+    private fun resolutionVariant(resolution: String): BadgeVariant = when (resolution) {
+        "4K" -> BadgeVariant.GOLD
+        "FHD" -> BadgeVariant.GRAY
+        else -> BadgeVariant.BLUE
+    }
+
+    private companion object {
+        const val MAX_DEPTH = 7
+        const val MIN_SIZE_BYTES = 500_000L
+        const val NEW_WINDOW_MS = 86_400_000L * 3
     }
 }

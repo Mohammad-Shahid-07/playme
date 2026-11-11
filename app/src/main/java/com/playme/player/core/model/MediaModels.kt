@@ -1,18 +1,20 @@
 package com.playme.player.core.model
 
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 
 enum class BadgeVariant {
     GOLD, BLUE, GRAY, GREEN
 }
 
+@Immutable
 data class VideoBadge(
     val label: String,
     val variant: BadgeVariant = BadgeVariant.GRAY
 )
 
 enum class VideoSubTab {
-    VIDEOS, FOLDERS
+    VIDEOS, FOLDERS, SERIES
 }
 
 enum class SortOption {
@@ -23,6 +25,11 @@ enum class ViewMode {
     LIST, GRID
 }
 
+/**
+ * `@Immutable` matters for scrolling: `Uri` is an Android class Compose cannot
+ * prove stable, so without this every card recomposes on each state tick.
+ */
+@Immutable
 data class VideoItem(
     val id: String,
     val title: String,
@@ -43,6 +50,7 @@ data class VideoItem(
     val parentFolder: String = ""
 )
 
+@Immutable
 data class FolderItem(
     val id: String,
     val name: String,
@@ -53,6 +61,7 @@ data class FolderItem(
     val thumbnailUrl: String? = null
 )
 
+@Immutable
 data class ContinueWatchingItem(
     val id: String,
     val title: String,

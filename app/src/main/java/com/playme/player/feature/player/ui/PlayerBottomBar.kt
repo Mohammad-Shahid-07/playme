@@ -56,6 +56,8 @@ fun PlayerBottomBar(
     onPlayPrevious: () -> Unit,
     onPlayNext: () -> Unit,
     onFullscreenToggle: () -> Unit,
+    videoId: String? = null,
+    filePath: String? = null,
     modifier: Modifier = Modifier
 ) {
     val progress = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
@@ -84,6 +86,8 @@ fun PlayerBottomBar(
                 currentPositionMs = currentPositionMs,
                 durationMs = durationMs,
                 progress = progress,
+                videoId = videoId,
+                filePath = filePath,
                 onSeek = { frac -> onSeekTo((frac * durationMs).toLong()) }
             )
 
@@ -176,99 +180,6 @@ fun PlayerBottomBar(
 }
 
 @Composable
-private fun TimelineScrubberRow(
-    currentPositionMs: Long,
-    durationMs: Long,
-    progress: Float,
-    onSeek: (Float) -> Unit
-) {
-    var widthPx by remember { mutableFloatStateOf(1f) }
-    // While dragging, follow the finger locally and only commit the seek on
-    // release. Seeking on every pixel makes playback stutter.
-    var scrubProgress by remember { mutableStateOf<Float?>(null) }
-    val displayProgress = scrubProgress ?: progress
-    val displayPositionMs = if (scrubProgress != null && durationMs > 0L) {
-        (displayProgress * durationMs).toLong()
-    } else {
-        currentPositionMs
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = formatTime(displayPositionMs),
-            color = Color(0xFF94A3B8),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = FontFamily.Monospace
-        )
-
-        // Custom Liquid Violet Seekbar
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(24.dp)
-                .onSizeChanged { widthPx = it.width.toFloat().coerceAtLeast(1f) }
-                .pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        onSeek((offset.x / widthPx).coerceIn(0f, 1f))
-                    }
-                }
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = { offset ->
-                            scrubProgress = (offset.x / widthPx).coerceIn(0f, 1f)
-                        },
-                        onDragEnd = {
-                            scrubProgress?.let { onSeek(it) }
-                            scrubProgress = null
-                        },
-                        onDragCancel = { scrubProgress = null }
-                    ) { change, _ ->
-                        change.consume()
-                        scrubProgress = (change.position.x / widthPx).coerceIn(0f, 1f)
-                    }
-                },
-            contentAlignment = Alignment.CenterStart
-        ) {
-            // Track Background
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.5.dp)
-                    .clip(CircleShape)
-                    .background(Color(0x26FFFFFF))
-            )
-
-            // Active Progress
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(displayProgress)
-                    .height(3.5.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFF6366F1), Color(0xFF818CF8))
-                        )
-                    )
-            )
-        }
-
-        val remainingMs = (durationMs - displayPositionMs).coerceAtLeast(0L)
-        Text(
-            text = "-${formatTime(remainingMs)}",
-            color = Color(0xFF94A3B8),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            fontFamily = FontFamily.Monospace
-        )
-    }
-}
-
-@Composable
 private fun TransportCircleButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
@@ -290,9 +201,3 @@ private fun TransportCircleButton(
     }
 }
 
-private fun formatTime(ms: Long): String {
-    val totalSec = ms / 1000L
-    val min = totalSec / 60L
-    val sec = totalSec % 60L
-    return "%02d:%02d".format(min, sec)
-}

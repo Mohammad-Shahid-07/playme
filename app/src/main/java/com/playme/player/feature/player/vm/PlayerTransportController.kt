@@ -3,6 +3,7 @@ package com.playme.player.feature.player.vm
 import com.playme.player.core.player.PlayerEngineContract
 import com.playme.player.feature.player.model.AspectRatioMode
 import com.playme.player.feature.player.model.DecoderMode
+import com.playme.player.feature.player.model.GestureType
 import com.playme.player.feature.player.model.PlayerState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
@@ -41,9 +42,6 @@ class PlayerTransportController(
         engine()?.seekTo(clamped)
         effects.resetControlsTimer()
     }
-
-    fun seekBy(deltaMs: Long) =
-        seekTo((state.value.currentPositionMs + deltaMs).coerceIn(0L, state.value.durationMs))
 
     fun setSpeed(speed: Float) {
         state.update { it.copy(playbackSpeed = speed) }
@@ -100,12 +98,33 @@ class PlayerTransportController(
 
     fun setVolume(volume: Float) {
         val clamped = volume.coerceIn(0f, 1f)
-        state.update { it.copy(volumePercent = clamped) }
+        state.update {
+            it.copy(
+                volumePercent = clamped,
+                gestureValue = if (it.activeGesture == GestureType.VOLUME) clamped else it.gestureValue
+            )
+        }
         engine()?.setVolume(clamped)
     }
 
+    fun setBrightness(brightness: Float) {
+        val clamped = brightness.coerceIn(0.05f, 1f)
+        state.update {
+            it.copy(
+                brightnessPercent = clamped,
+                gestureValue = if (it.activeGesture == GestureType.BRIGHTNESS) clamped else it.gestureValue
+            )
+        }
+    }
+
     fun setSpeedBoost(enabled: Boolean) {
-        state.update { it.copy(isSpeedBoostActive = enabled) }
+        if (state.value.isSpeedBoostActive == enabled) return
+        state.update {
+            it.copy(
+                isSpeedBoostActive = enabled,
+                isControlsVisible = if (enabled) false else it.isControlsVisible
+            )
+        }
         engine()?.setSpeed(if (enabled) state.value.boostSpeed else state.value.playbackSpeed)
     }
 

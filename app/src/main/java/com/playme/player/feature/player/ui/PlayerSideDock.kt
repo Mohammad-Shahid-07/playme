@@ -56,17 +56,18 @@ fun PlayerSideDock(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // 1. Mute Button
-            SideDockIconButton(
-                icon = if (isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
-                contentDescription = if (isMuted) "Unmute" else "Mute",
-                isActive = isMuted,
-                onClick = onToggleMute
-            )
+            // Locked mode keeps only the unlock control, like VLC.
+            if (!isLocked) {
+                SideDockIconButton(
+                    icon = if (isMuted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp,
+                    contentDescription = if (isMuted) "Unmute" else "Mute",
+                    isActive = isMuted,
+                    onClick = onToggleMute
+                )
 
-            DockDivider()
+                DockDivider()
+            }
 
-            // 2. Lock Button
             SideDockIconButton(
                 icon = if (isLocked) Icons.Rounded.Lock else Icons.Rounded.LockOpen,
                 contentDescription = if (isLocked) "Unlock" else "Lock",
@@ -74,43 +75,42 @@ fun PlayerSideDock(
                 onClick = onToggleLock
             )
 
-            DockDivider()
+            if (!isLocked) {
+                DockDivider()
 
-            // 3. Snapshot Button
-            SideDockIconButton(
-                icon = Icons.Rounded.PhotoCamera,
-                contentDescription = "Capture Snapshot",
-                isActive = false,
-                onClick = onSnapshot
-            )
+                SideDockIconButton(
+                    icon = Icons.Rounded.PhotoCamera,
+                    contentDescription = "Capture Snapshot",
+                    isActive = false,
+                    onClick = onSnapshot
+                )
 
-            DockDivider()
+                DockDivider()
 
-            // 4. A-B Loop Button (Text Button)
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onToggleAbLoop),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "A-B",
-                    color = if (isAbActive) Color(0xFF818CF8) else Color(0xCCFFFFFF),
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.Bold
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onToggleAbLoop),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "A-B",
+                        color = if (isAbActive) Color(0xFF818CF8) else Color(0xCCFFFFFF),
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                DockDivider()
+
+                SideDockIconButton(
+                    icon = Icons.Rounded.ScreenRotation,
+                    contentDescription = "Rotate",
+                    isActive = false,
+                    onClick = onRotate
                 )
             }
-
-            DockDivider()
-
-            // 5. Rotate / Fullscreen Button
-            SideDockIconButton(
-                icon = Icons.Rounded.ScreenRotation,
-                contentDescription = "Rotate",
-                isActive = false,
-                onClick = onRotate
-            )
         }
     }
 }

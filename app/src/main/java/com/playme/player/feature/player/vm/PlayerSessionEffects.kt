@@ -1,6 +1,7 @@
 package com.playme.player.feature.player.vm
 
 import com.playme.player.core.player.PlayerEngineContract
+import com.playme.player.feature.player.model.GestureType
 import com.playme.player.feature.player.model.PlayerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -22,6 +23,7 @@ class PlayerSessionEffects(
 
     private var autoHideJob: Job? = null
     private var sleepTimerJob: Job? = null
+    private var seekFlashJob: Job? = null
 
     fun resetControlsTimer() {
         autoHideJob?.cancel()
@@ -38,6 +40,35 @@ class PlayerSessionEffects(
             delay(TOAST_DURATION_MS)
             state.update { if (it.toastMessage == message) it.copy(toastMessage = null) else it }
         }
+    }
+
+    /**
+     * Briefly mirrors a double-tap seek in the gesture HUD so the jump has the
+     * same visual feedback as a swipe.
+     */
+    fun flashSeek(deltaMs: Long, targetMs: Long) {
+        seekFlashJob?.cancel()
+        state.update {
+            it.copy(
+                activeGesture = GestureType.SEEK,
+                gestureValue = deltaMs.toFloat(),
+                seekPreviewPositionMs = targetMs.coerceIn(0L, it.durationMs)
+            )
+        }
+        seekFlashJob = scope.launch {
+            delay(SEEK_FLASH_MS)
+            state.update {
+                if (it.activeGesture == GestureType.SEEK) {
+                    it.copy(activeGesture = GestureType.NONE)
+                } else {
+                    it
+                }
+            }
+        }
+    }
+
+    fun cancelSeekFlash() {
+        seekFlashJob?.cancel()
     }
 
     fun setSleepTimer(minutes: Int) {
@@ -61,5 +92,6 @@ class PlayerSessionEffects(
     private companion object {
         const val CONTROLS_AUTO_HIDE_MS = 3500L
         const val TOAST_DURATION_MS = 2000L
+        const val SEEK_FLASH_MS = 650L
     }
 }

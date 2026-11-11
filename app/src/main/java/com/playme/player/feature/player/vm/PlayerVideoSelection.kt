@@ -24,6 +24,7 @@ object PlayerVideoSelection {
             isControlsVisible = true,
             activeGesture = GestureType.NONE,
             gestureValue = 0f,
+            seekPreviewPositionMs = 0L,
             isSpeedBoostActive = false,
             currentSubtitle = null,
             toastMessage = null

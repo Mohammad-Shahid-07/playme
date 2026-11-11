@@ -38,7 +38,7 @@ fun GestureOverlayHUD(
     activeGesture: GestureType,
     gestureValue: Float,
     isSpeedBoostActive: Boolean,
-    currentPosMs: Long,
+    seekTargetPosMs: Long,
     durationMs: Long,
     onSelectBoostSpeed: (Float) -> Unit,
     showLockedAlert: Boolean = false,
@@ -95,7 +95,7 @@ fun GestureOverlayHUD(
         ScreenGestureSeekHUD(
             isActive = activeGesture == GestureType.SEEK,
             deltaMs = gestureValue.toLong(),
-            currentPosMs = currentPosMs,
+            targetPosMs = seekTargetPosMs,
             durationMs = durationMs,
             modifier = Modifier.align(Alignment.Center)
         )

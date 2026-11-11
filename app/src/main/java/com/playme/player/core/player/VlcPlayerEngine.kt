@@ -26,6 +26,7 @@ class VlcPlayerEngine(
     private var savedVolume: Float = 1.0f
     private var attachedSurfaceView: SurfaceView? = null
     private var vlcVideoLayout: org.videolan.libvlc.util.VLCVideoLayout? = null
+    private var attachedLayout: org.videolan.libvlc.util.VLCVideoLayout? = null
     private var pfd: android.os.ParcelFileDescriptor? = null
     private var decoderMode: DecoderMode = DecoderMode.HW
 
@@ -36,28 +37,10 @@ class VlcPlayerEngine(
     override val player: ExoPlayer? = null
     override val engineType: EngineType = EngineType.VLC
 
-    init {
-        initLibVlc()
-    }
-
-    private fun initLibVlc() {
-        try {
-            val options = arrayListOf(
-                "--no-sub-autodetect-file",
-                "--swscale-mode=0",
-                "--network-caching=1500"
-            )
-            libVlc = LibVLC(context, options)
-            mediaPlayer = MediaPlayer(libVlc).apply {
-                setEventListener(vlcEventListener)
-            }
-            Log.d(TAG, "LibVLC initialized successfully")
-        } catch (e: Throwable) {
-            Log.e(TAG, "LibVLC initialization failed", e)
-            engineListener?.onError("LibVLC initialization failed: ${e.message}")
-        }
-    }
-
+    // NOTE: property initialisers run in declaration order. This listener must
+    // be declared before the `init` block below, otherwise LibVLC is registered
+    // with a null listener and the player never reports Playing/TimeChanged —
+    // video plays, but the HUD stays frozen at 00:00.
     private val vlcEventListener = MediaPlayer.EventListener { event ->
         val mp = mediaPlayer ?: return@EventListener
         when (event.type) {
@@ -96,6 +79,29 @@ class VlcPlayerEngine(
         }
     }
 
+    // Declared after the listener so the property above is already initialised.
+    init {
+        initLibVlc()
+    }
+
+    private fun initLibVlc() {
+        try {
+            val options = arrayListOf(
+                "--no-sub-autodetect-file",
+                "--swscale-mode=0",
+                "--network-caching=1500"
+            )
+            libVlc = LibVLC(context, options)
+            mediaPlayer = MediaPlayer(libVlc).apply {
+                setEventListener(vlcEventListener)
+            }
+            Log.d(TAG, "LibVLC initialized successfully")
+        } catch (e: Throwable) {
+            Log.e(TAG, "LibVLC initialization failed", e)
+            engineListener?.onError("LibVLC initialization failed: ${e.message}")
+        }
+    }
+
     private fun dispatchTracks() {
         val (audio, spu) = VlcTrackHelper.extractTracks(mediaPlayer)
         engineListener?.onTracksChanged(audio, spu)
@@ -106,21 +112,33 @@ class VlcPlayerEngine(
     }
 
     fun attachVlcLayout(layout: org.videolan.libvlc.util.VLCVideoLayout) {
-        val previous = vlcVideoLayout
         this.vlcVideoLayout = layout
-        mediaPlayer?.let { mp ->
-            try {
-                if (previous === layout && mp.vlcVout.areViewsAttached()) {
-                    return
-                }
-                if (mp.vlcVout.areViewsAttached()) {
-                    mp.detachViews()
-                }
-                mp.attachViews(layout, null, true, true)
-                Log.d(TAG, "Attached VLCVideoLayout with useTextureView=true")
-            } catch (e: Throwable) {
-                Log.e(TAG, "Failed attaching VLC views", e)
+        if (attachedLayout === layout && mediaPlayer?.vlcVout?.areViewsAttached() == true) {
+            return
+        }
+        // Posting waits for the view to be attached to the window, which is
+        // required before LibVLC can create a SurfaceView-backed video output.
+        layout.post { attachVlcViews(layout) }
+    }
+
+    private fun attachVlcViews(layout: org.videolan.libvlc.util.VLCVideoLayout) {
+        if (vlcVideoLayout !== layout) return
+        val mp = mediaPlayer ?: return
+        // Re-attaching tears the video output down mid-playback; Compose calls
+        // the update block on every recomposition, so this must be idempotent.
+        if (attachedLayout === layout && mp.vlcVout.areViewsAttached()) return
+        try {
+            if (mp.vlcVout.areViewsAttached()) {
+                mp.detachViews()
             }
+            // useTextureView = false: a TextureView is drawn above all Compose
+            // content, hiding the player HUD and swallowing taps. A SurfaceView
+            // renders behind the window, so the controls stay interactive.
+            mp.attachViews(layout, null, false, true)
+            attachedLayout = layout
+            Log.d(TAG, "Attached VLCVideoLayout with useTextureView=false")
+        } catch (e: Throwable) {
+            Log.e(TAG, "Failed attaching VLC views", e)
         }
     }
 
@@ -129,6 +147,7 @@ class VlcPlayerEngine(
             mediaPlayer?.detachViews()
         } catch (_: Throwable) {}
         vlcVideoLayout = null
+        attachedLayout = null
     }
 
     override fun attachSurface(surfaceView: SurfaceView) {

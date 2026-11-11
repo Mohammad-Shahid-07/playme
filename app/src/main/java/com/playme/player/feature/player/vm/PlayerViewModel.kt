@@ -75,7 +75,15 @@ class PlayerViewModel : ViewModel() {
             PlayerAction.Play -> transport.play()
             PlayerAction.Pause -> transport.pause()
             is PlayerAction.SeekTo -> transport.seekTo(action.positionMs)
-            is PlayerAction.SeekBy -> transport.seekBy(action.deltaMs)
+            is PlayerAction.SeekBy -> {
+                val before = _state.value
+                val target = (before.currentPositionMs + action.deltaMs)
+                    .coerceIn(0L, before.durationMs)
+                transport.seekTo(target)
+                if (target != before.currentPositionMs) {
+                    effects.flashSeek(target - before.currentPositionMs, target)
+                }
+            }
             is PlayerAction.SetSpeed -> transport.setSpeed(action.speed)
             PlayerAction.CycleSpeed -> transport.setSpeed(PlayerPlaybackCoordinator.getNextSpeed(_state.value.playbackSpeed))
             PlayerAction.ToggleMute -> transport.toggleMute()
@@ -87,9 +95,33 @@ class PlayerViewModel : ViewModel() {
             PlayerAction.ShowControls -> transport.showControls()
             PlayerAction.ToggleAbLoop -> transport.toggleAbLoop()
             is PlayerAction.SetVolume -> transport.setVolume(action.volume)
-            is PlayerAction.SetBrightness -> _state.update { it.copy(brightnessPercent = action.brightness.coerceIn(0.05f, 1f)) }
-            is PlayerAction.StartGesture -> _state.update { it.copy(activeGesture = action.type, gestureValue = action.value) }
-            is PlayerAction.UpdateGesture -> _state.update { it.copy(gestureValue = action.value) }
+            is PlayerAction.SetBrightness -> transport.setBrightness(action.brightness)
+            is PlayerAction.StartGesture -> _state.update { state ->
+                if (action.type == GestureType.SEEK) {
+                    effects.cancelSeekFlash()
+                    state.copy(
+                        activeGesture = GestureType.SEEK,
+                        gestureValue = 0f,
+                        seekPreviewPositionMs = state.currentPositionMs
+                    )
+                } else {
+                    state.copy(activeGesture = action.type, gestureValue = action.value)
+                }
+            }
+            is PlayerAction.UpdateGesture -> when (action.type) {
+                GestureType.VOLUME -> transport.setVolume(action.value)
+                GestureType.BRIGHTNESS -> transport.setBrightness(action.value)
+                GestureType.SEEK -> _state.update { state ->
+                    val deltaMs = (action.value - state.gestureValue).toLong()
+                    val target = (state.seekPreviewPositionMs + deltaMs)
+                        .coerceIn(0L, state.durationMs)
+                    state.copy(
+                        gestureValue = action.value,
+                        seekPreviewPositionMs = target
+                    )
+                }
+                else -> _state.update { it.copy(gestureValue = action.value) }
+            }
             PlayerAction.EndGesture -> _state.update { it.copy(activeGesture = GestureType.NONE) }
             is PlayerAction.SetSpeedBoost -> transport.setSpeedBoost(action.enabled)
             is PlayerAction.ShowToast -> effects.showToast(action.message)

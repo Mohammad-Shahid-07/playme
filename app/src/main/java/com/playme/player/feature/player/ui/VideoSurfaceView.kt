@@ -12,11 +12,11 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.playme.player.R
 import com.playme.player.core.player.EngineType
+import com.playme.player.core.player.NonConsumingVlcLayout
 import com.playme.player.core.player.PlayerEngineContract
 import com.playme.player.core.player.UniversalPlayerEngine
 import com.playme.player.core.player.VlcPlayerEngine
 import com.playme.player.feature.player.model.AspectRatioMode
-import org.videolan.libvlc.util.VLCVideoLayout
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -36,7 +36,7 @@ fun VideoSurfaceView(
     if (activeEngineType == EngineType.VLC || engine?.engineType == EngineType.VLC) {
         AndroidView(
             factory = { context ->
-                VLCVideoLayout(context).apply {
+                NonConsumingVlcLayout(context).apply {
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT

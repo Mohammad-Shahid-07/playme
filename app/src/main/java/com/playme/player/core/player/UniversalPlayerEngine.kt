@@ -21,6 +21,10 @@ class UniversalPlayerEngine(
     private var engineListener: PlayerEngineListener? = null
     private var currentVideo: VideoItem? = null
     private var lastPositionMs: Long = 0L
+
+    /** First timestamp the engine reported for the current media; see listenerProxy. */
+    private var positionOriginMs: Long = 0L
+    private var originCaptured: Boolean = false
     private var attachedSurfaceView: SurfaceView? = null
     private var currentDecoderMode: DecoderMode = DecoderMode.HW
     private var vlcLayout: org.videolan.libvlc.util.VLCVideoLayout? = null
@@ -38,8 +42,26 @@ class UniversalPlayerEngine(
 
     private val listenerProxy = object : PlayerEngineListener {
         override fun onPositionChanged(positionMs: Long, durationMs: Long, bufferMs: Long) {
-            lastPositionMs = positionMs
-            engineListener?.onPositionChanged(positionMs, durationMs, bufferMs)
+            // Some containers (MPEG-TS in particular) start at a non-zero
+            // presentation timestamp, so the engine reports positions measured
+            // from an arbitrary origin — a 21-minute episode appearing to open
+            // at 275:44. Anchor the first real position and report everything
+            // relative to it, which is what the user perceives as 00:00.
+            if (!originCaptured && positionMs > 0L) {
+                positionOriginMs = positionMs
+                originCaptured = true
+            }
+            val relative = (positionMs - positionOriginMs).coerceAtLeast(0L)
+            // The duration is measured on the same offset timeline, so it needs
+            // the same correction — otherwise a 21-minute episode reports a
+            // 296-minute runtime alongside a 00:11 position.
+            val relativeDuration = if (durationMs > positionOriginMs) {
+                durationMs - positionOriginMs
+            } else {
+                durationMs
+            }
+            lastPositionMs = relative
+            engineListener?.onPositionChanged(relative, relativeDuration, bufferMs)
         }
 
         override fun onPlaybackStateChanged(isPlaying: Boolean, isBuffering: Boolean) {
@@ -100,6 +122,9 @@ class UniversalPlayerEngine(
     }
 
     private fun startVlcPlayback(video: VideoItem, seekMs: Long) {
+        // A different engine means a different timeline origin.
+        positionOriginMs = 0L
+        originCaptured = false
         activeEngine = vlcEngine
         vlcEngine.setDecoderMode(currentDecoderMode)
         if (vlcLayout == null) {
@@ -141,8 +166,10 @@ class UniversalPlayerEngine(
         this.lastPositionMs = 0L
         this.pendingVlcVideo = null
         this.pendingVlcSeekMs = 0L
+        this.positionOriginMs = 0L
+        this.originCaptured = false
 
-        if (currentDecoderMode == DecoderMode.SW) {
+        if (currentDecoderMode == DecoderMode.SW || video.needsVlcEngine()) {
             startVlcPlayback(video, 0L)
             return
         }
@@ -161,7 +188,7 @@ class UniversalPlayerEngine(
     override fun pause() = activeEngine.pause()
     override fun seekTo(positionMs: Long) {
         lastPositionMs = positionMs
-        activeEngine.seekTo(positionMs)
+        activeEngine.seekTo(positionMs + positionOriginMs)
     }
     override fun setSpeed(speed: Float) = activeEngine.setSpeed(speed)
     override fun setVolume(volume: Float) = activeEngine.setVolume(volume)
@@ -210,3 +237,17 @@ class UniversalPlayerEngine(
         vlcEngine.release()
     }
 }
+
+/**
+ * MPEG-TS timestamps may contain PCR discontinuities — common in DVR and
+ * streaming-app captures. ExoPlayer's TsExtractor then reports a duration many
+ * times the real length and its seek positions live in that bogus timeline,
+ * which corrupts both the seek bar and the stored resume position. LibVLC's TS
+ * demuxer handles the discontinuities, so these containers start on it.
+ */
+private fun VideoItem.needsVlcEngine(): Boolean =
+    format.equals("TS", ignoreCase = true) ||
+        format.equals("M2TS", ignoreCase = true) ||
+        path.endsWith(".ts", ignoreCase = true) ||
+        path.endsWith(".m2ts", ignoreCase = true)
+

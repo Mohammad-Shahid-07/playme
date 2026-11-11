@@ -57,13 +57,13 @@ private fun formatDelta(deltaSec: Long): String {
 fun ScreenGestureSeekHUD(
     isActive: Boolean,
     deltaMs: Long,
-    currentPosMs: Long,
+    targetPosMs: Long,
     durationMs: Long,
     modifier: Modifier = Modifier
 ) {
     val isForward = deltaMs >= 0
     val deltaSec = deltaMs / 1000L
-    val targetPosSec = ((currentPosMs + deltaMs).coerceIn(0L, durationMs)) / 1000L
+    val targetPosSec = targetPosMs.coerceIn(0L, durationMs) / 1000L
     val durationSec = durationMs / 1000L
 
     AnimatedVisibility(

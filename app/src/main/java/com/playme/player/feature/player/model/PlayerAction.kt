@@ -21,7 +21,7 @@ sealed interface PlayerAction {
     data class SetVolume(val volume: Float) : PlayerAction
     data class SetBrightness(val brightness: Float) : PlayerAction
     data class StartGesture(val type: GestureType, val value: Float) : PlayerAction
-    data class UpdateGesture(val value: Float) : PlayerAction
+    data class UpdateGesture(val type: GestureType, val value: Float) : PlayerAction
     data object EndGesture : PlayerAction
     data class SetSpeedBoost(val enabled: Boolean) : PlayerAction
     data class ShowToast(val message: String) : PlayerAction

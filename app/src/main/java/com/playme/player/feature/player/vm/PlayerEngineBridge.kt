@@ -68,13 +68,8 @@ object PlayerEngineBridge {
             }
 
             override fun onEngineSwitched(engineType: EngineType) {
+                // Engine choice is an implementation detail; never surface it.
                 updateState { it.copy(activeEngineType = engineType) }
-                val label = if (engineType == EngineType.VLC) {
-                    "Universal Codec Engine (LibVLC)"
-                } else {
-                    "Hardware Engine (Media3)"
-                }
-                onShowToast("Using $label")
             }
         }
     }

@@ -74,56 +74,54 @@ fun PlayerScreen(
         volumePercent = state.volumePercent
     )
 
+    PlayerAudioFocusEffect(viewModel = viewModel, isPlaying = state.isPlaying)
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFF07090E))
     ) {
-        // 1. Gesture Detection Layer
+        // 1. Video Stage Canvas with Ambient Glow & Subtitles
+        VideoStageCanvas(
+            video = state.currentVideo,
+            aspectRatioMode = state.aspectRatioMode,
+            isControlsVisible = state.isControlsVisible && !state.isLocked,
+            currentSubtitle = state.currentSubtitle,
+            videoSurface = videoSurface ?: {
+                VideoSurfaceView(
+                    engine = viewModel.engine,
+                    aspectRatioMode = state.aspectRatioMode,
+                    activeEngineType = state.activeEngineType
+                )
+            }
+        )
+
+        // 2. Gesture Detection Layer (above the native surface, below the HUD)
         PlayerGestureBox(
             isLocked = state.isLocked,
             currentVolume = state.volumePercent,
             currentBrightness = state.brightnessPercent,
             currentPositionMs = state.currentPositionMs,
             durationMs = state.durationMs,
+            boostSpeed = state.boostSpeed,
             onSingleTap = { viewModel.onAction(PlayerAction.ToggleControls) },
             onDoubleTapSeek = { delta -> viewModel.onAction(PlayerAction.SeekBy(delta)) },
             onTogglePlay = { viewModel.onAction(PlayerAction.TogglePlay) },
             onSpeedBoost = { enabled -> viewModel.onAction(PlayerAction.SetSpeedBoost(enabled)) },
+            onBoostSpeedChange = { speed -> viewModel.onAction(PlayerAction.SetSpeedBoostValue(speed)) },
             onGestureStart = { type, value -> viewModel.onAction(PlayerAction.StartGesture(type, value)) },
-            onGestureUpdate = { value ->
-                when (state.activeGesture) {
-                    GestureType.VOLUME -> viewModel.onAction(PlayerAction.SetVolume(value))
-                    GestureType.BRIGHTNESS -> viewModel.onAction(PlayerAction.SetBrightness(value))
-                    else -> viewModel.onAction(PlayerAction.UpdateGesture(value))
-                }
-            },
+            onGestureUpdate = { type, value -> viewModel.onAction(PlayerAction.UpdateGesture(type, value)) },
             onGestureEnd = { viewModel.onAction(PlayerAction.EndGesture) },
             onSeekCommit = { targetMs -> viewModel.onAction(PlayerAction.SeekTo(targetMs)) },
             onLockedTouchAlert = { viewModel.onAction(PlayerAction.ShowToast("Controls Locked")) }
-        ) {
-            // 2. Video Stage Canvas with Ambient Glow & Subtitles
-            VideoStageCanvas(
-                video = state.currentVideo,
-                aspectRatioMode = state.aspectRatioMode,
-                isControlsVisible = state.isControlsVisible && !state.isLocked,
-                currentSubtitle = state.currentSubtitle,
-                videoSurface = videoSurface ?: {
-                    VideoSurfaceView(
-                        engine = viewModel.engine,
-                        aspectRatioMode = state.aspectRatioMode,
-                        activeEngineType = state.activeEngineType
-                    )
-                }
-            )
-        }
+        )
 
         // 3. Gesture Indicator Overlays (Volume, Brightness, Scrub, 2x Speed Pill)
         GestureOverlayHUD(
             activeGesture = state.activeGesture,
             gestureValue = state.gestureValue,
             isSpeedBoostActive = state.isSpeedBoostActive,
-            currentPosMs = state.currentPositionMs,
+            seekTargetPosMs = state.seekPreviewPositionMs,
             durationMs = state.durationMs,
             onSelectBoostSpeed = { speed -> viewModel.onAction(PlayerAction.SetSpeedBoostValue(speed)) },
             showLockedAlert = state.isLocked && state.activeGesture != GestureType.NONE,
@@ -193,6 +191,8 @@ fun PlayerScreen(
                 onPlayPrevious = { viewModel.onAction(PlayerAction.PlayPrevious) },
                 onPlayNext = { viewModel.onAction(PlayerAction.PlayNext) },
                 onFullscreenToggle = { viewModel.onAction(PlayerAction.ToggleFullscreen) },
+                videoId = state.currentVideo?.id,
+                filePath = state.currentVideo?.path,
                 modifier = Modifier.navigationBarsPadding()
             )
         }

@@ -5,7 +5,15 @@
 > **Status:** `v0.01 (Pre-release)` (`versionCode = 1`, `minSdk = 26` / Android 8.0+, `targetSdk = 35`)  
 > **Repository:** [`Mohammad-Shahid-07/playme`](https://github.com/Mohammad-Shahid-07/playme)
 
-![PlayMe Library Home](docs/screenshots/library-home.png)
+### Screenshots (`v0.01` on Device)
+
+| Library Home | Auto-Grouped Series | Series Episodes |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/library-home.png" width="220" alt="Library Home" /> | <img src="docs/screenshots/series-tab.png" width="220" alt="Series Tab" /> | <img src="docs/screenshots/series-detail.png" width="220" alt="Series Detail" /> |
+
+| Player HUD | Playback Speed Studio | Settings Sidebar | Queue Sheet |
+| :---: | :---: | :---: | :---: |
+| <img src="docs/screenshots/player-hud.png" width="180" alt="Player HUD" /> | <img src="docs/screenshots/player-speed-studio.png" width="180" alt="Speed Studio" /> | <img src="docs/screenshots/player-settings.png" width="180" alt="Player Settings" /> | <img src="docs/screenshots/player-queue.png" width="180" alt="Queue Bottom Sheet" /> |
 
 ---
 

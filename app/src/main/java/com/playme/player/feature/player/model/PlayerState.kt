@@ -59,6 +59,7 @@ data class PlayerState(
     val subtitleDelayMs: Long = 0L,
     val currentSubtitle: String? = null,
     val isFullscreen: Boolean = false,
+    val orientationOverride: Boolean? = null,
     val isShuffle: Boolean = false,
     val repeatMode: String = "all", // "off", "all", "one"
     val isAutoplay: Boolean = true,

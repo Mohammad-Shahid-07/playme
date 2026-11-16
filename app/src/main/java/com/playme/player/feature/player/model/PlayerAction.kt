@@ -37,6 +37,8 @@ sealed interface PlayerAction {
     data object PlayNext : PlayerAction
     data object PlayPrevious : PlayerAction
     data object ToggleFullscreen : PlayerAction
+    data class SyncConfigurationOrientation(val isLandscape: Boolean) : PlayerAction
+    data object ClearOrientationOverride : PlayerAction
     data object ClosePlayer : PlayerAction
     data object ToggleShuffle : PlayerAction
     data object CycleRepeatMode : PlayerAction

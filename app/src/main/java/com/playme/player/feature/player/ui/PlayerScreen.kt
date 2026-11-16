@@ -67,7 +67,16 @@ fun PlayerScreen(
         }
     }
 
-    PlayerFullscreenSystemBarsEffect(isFullscreen = state.isFullscreen)
+    PlayerOrientationEffect(
+        isFullscreen = state.isFullscreen,
+        orientationOverride = state.orientationOverride,
+        onSyncConfigurationOrientation = {
+            viewModel.onAction(PlayerAction.SyncConfigurationOrientation(it))
+        },
+        onClearOrientationOverride = {
+            viewModel.onAction(PlayerAction.ClearOrientationOverride)
+        }
+    )
 
     // Android System Volume & Window Brightness Sync
     PlayerSystemSyncEffect(

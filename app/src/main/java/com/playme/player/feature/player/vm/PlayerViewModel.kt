@@ -178,7 +178,18 @@ class PlayerViewModel : ViewModel() {
             is PlayerAction.PlayTrack -> setInitialVideo(action.video, _state.value.playlist)
             PlayerAction.PlayNext -> queue.playNext()
             PlayerAction.PlayPrevious -> queue.playPrevious()
-            PlayerAction.ToggleFullscreen -> _state.update { it.copy(isFullscreen = !it.isFullscreen) }
+            PlayerAction.ToggleFullscreen -> _state.update {
+                val targetLandscape = !it.isFullscreen
+                it.copy(isFullscreen = targetLandscape, orientationOverride = targetLandscape)
+            }
+            is PlayerAction.SyncConfigurationOrientation -> _state.update {
+                if (it.orientationOverride == null || it.orientationOverride == action.isLandscape) {
+                    it.copy(isFullscreen = action.isLandscape)
+                } else {
+                    it
+                }
+            }
+            PlayerAction.ClearOrientationOverride -> _state.update { it.copy(orientationOverride = null) }
             PlayerAction.ClosePlayer -> {}
             PlayerAction.ToggleShuffle -> queue.toggleShuffle()
             PlayerAction.CycleRepeatMode -> queue.cycleRepeatMode()

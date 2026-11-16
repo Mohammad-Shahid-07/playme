@@ -88,8 +88,8 @@ PlayMe splits APKs by ABI because LibVLC and FFmpegKit bundle native libraries p
 
 | APK File | ABI | Size (bytes) | SHA-256 Checksum | Device Compatibility |
 | :--- | :--- | ---: | :--- | :--- |
-| `PlayMe-v0.01-arm64-v8a.apk` | `arm64-v8a` | `33,882,401` | `7a2a40c25067c33609ca20dc04cd687826e7bc1c7e521e83dc27270dd8a6e4d8` | **Recommended** for most modern 64-bit ARM phones & tablets (Android 8.0+). |
-| `PlayMe-v0.01-armeabi-v7a.apk` | `armeabi-v7a` | `30,846,902` | `e510ff194bfded85c2db076b8d025208e9b1e1edaa8120daa14bf20d5f116f81` | Older 32-bit ARM devices or 32-bit Android OS builds. |
+| `PlayMe-v0.01-arm64-v8a.apk` | `arm64-v8a` | `33,884,373` | `c5a740ad16c609562a5da633a597df643a21b2b14af5f3bdd7e4eba7558da809` | **Recommended** for most modern 64-bit ARM phones & tablets (Android 8.0+). |
+| `PlayMe-v0.01-armeabi-v7a.apk` | `armeabi-v7a` | `30,848,878` | `cea0221a64b75c976438ce8a7b4ff194e9de787fe9bf207f9a525a9741961c5f` | Older 32-bit ARM devices or 32-bit Android OS builds. |
 
 ### Verify Checksums Before Installing
 

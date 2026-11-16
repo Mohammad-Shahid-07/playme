@@ -39,6 +39,7 @@ object PlayerVideoSelection {
             isShuffle = if (resetQueueMode) false else current.isShuffle,
             volumePercent = if (resetQueueMode) -1f else current.volumePercent,
             brightnessPercent = if (resetQueueMode) -1f else current.brightnessPercent,
+            orientationOverride = if (resetQueueMode) null else current.orientationOverride,
             activeEngineType = initialEngine,
             isControlsVisible = true,
             isAbLoopActive = false,

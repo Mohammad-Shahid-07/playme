@@ -130,7 +130,10 @@ class PlayMePlayerEngine(
         }
 
         override fun onCues(cueGroup: CueGroup) {
-            val text = cueGroup.cues.firstOrNull()?.text?.toString()
+            val text = cueGroup.cues
+                .mapNotNull { it.text?.toString()?.trim()?.takeIf(String::isNotEmpty) }
+                .joinToString("\n")
+                .ifEmpty { null }
             engineListener?.onSubtitleCue(text)
         }
 

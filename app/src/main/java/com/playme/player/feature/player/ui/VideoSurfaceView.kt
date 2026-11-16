@@ -72,6 +72,9 @@ fun VideoSurfaceView(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                     useController = false
+                    // VideoStageCanvas renders ExoPlayer cues in PlayMe's styled pill;
+                    // hide Media3's built-in SubtitleView to prevent duplicate subtitles.
+                    subtitleView?.visibility = android.view.View.GONE
                     setShutterBackgroundColor(android.graphics.Color.TRANSPARENT)
                     // No built-in spinner: fast seeks would flash it. The
                     // Compose overlay only appears after 1.5s of buffering.

@@ -65,7 +65,10 @@ object PlayerSettingsDelegate {
         val idToSelect = track?.id ?: if (trackNameOrId.equals("Off", ignoreCase = true) || trackNameOrId == "-1") "none" else trackNameOrId
         val name = track?.name ?: if (idToSelect == "none") "Off" else trackNameOrId
         engine?.selectSubtitleTrack(idToSelect)
-        return state.copy(selectedSubtitleTrack = idToSelect) to "Subtitle: $name"
+        return state.copy(
+            selectedSubtitleTrack = idToSelect,
+            currentSubtitle = if (idToSelect == "none") null else state.currentSubtitle
+        ) to "Subtitle: $name"
     }
 
     fun toggleDialogueClarity(state: PlayerState): Pair<PlayerState, String> {

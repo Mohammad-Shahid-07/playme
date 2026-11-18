@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="72" viewBox="0 0 380 72" role="img" aria-label="Download PlayMe for Android">
+  <defs>
+    <linearGradient id="buttonGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#757BF8"/>
+      <stop offset="1" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="378" height="70" rx="18" fill="url(#buttonGradient)" stroke="#8B5CF6" stroke-width="1.5"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M27 24v11a4 4 0 0 0 4 4h14a4 4 0 0 0 4-4V24"/>
+    <path d="M38 17v14"/>
+    <path d="m33 27 5 5 5-5"/>
+  </g>
+  <text x="64" y="34" fill="#FFFFFF" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="19" font-weight="700">Download PlayMe</text>
+  <text x="64" y="53" fill="#E5E7FF" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-size="13">Free APK for Android 8.0+</text>
+</svg>
